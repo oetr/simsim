@@ -1,4 +1,4 @@
 *
 !LICENSE
 !.gitignore
-*.rkt
+!*.rkt
