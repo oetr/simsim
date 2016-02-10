@@ -1,5 +1,8 @@
 *
 !LICENSE
 !.gitignore
+!tests/
 !*.org
 !*.rkt
+!*.S
+!Makefile

@@ -952,79 +952,16 @@
   (for ([r 32])
     (printf "R~a = ~a~n" r (num->hex (sram-get-byte r)))))
 
-
-(define iteration 0)
-(define debug? #f)
-(define debug? #t)
-(reset-machine "~/Documents/Programming/dump.txt")
-(reset-machine)
-(hex->flash! "../AES_for_both_Cards/main.hex")
-
-
-;; Get the right symbol table
-(define symbol-file "../AES_for_both_Cards/disassembly.txt")
-;;(define symbol-file "~/Dropbox/Papers/Fault-Injection-Watermarks/src/maskedAES-PreGeneratedMasks/main-dump.txt")
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Testing instructions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Get the symbol table
+(define symbol-file "./tests/main.sim")
 (load-symbol-table symbol-file)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; script to run AES
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;(reset-machine)
-(reset-machine "~/Documents/Programming/dump.txt")
-(hex->flash! "../AES_for_both_Cards/main.hex")
-;;(hex->flash! "~/Dropbox/Papers/Fault-Injection-Watermarks/src/maskedAES/main.hex")
-;;(hex->flash! "~/Dropbox/Papers/Fault-Injection-Watermarks/src/maskedAES-PreGeneratedMasks/main.hex")
-(define iteration 0)
-(define debug? #f)
-(go-address (lookup-symbol "main"))
-;;(set! PC (lookup-symbol "aes_encrypt"))
-(set! PC (lookup-symbol "aes_encrypt"))
+;; Load the hex file
+(define hex-file "./tests/main.hex")
+(reset-machine)
+(hex->flash! "./tests/main.hex")
 (define debug? #t)
-;; set key address
-(define kl #xa5) (define kh #x00)
-(define pl #xb5) (define ph #x00)
-(sram-set-byte 22 kl) ;; key low
-(sram-set-byte 23 kh) ;; key high
-(sram-set-byte 24 pl) ;; pt low
-(sram-set-byte 25 ph) ;; pt high
-(for ([pt #(#x32 #x43 #xf6 #xa8 #x88 #x5a #x30 #x8d #x31 #x31 #x98 #xa2 #xe0 #x37 #x07 #x34)]
-      [key  #(#x2b #x7e #x15 #x16 #x28 #xae #xd2 #xa6 #xab #xf7 #x15 #x88 #x09 #xcf #x4f #x3c)]
-      [i 16])
-  (sram-set-byte (+ kl i) key)
-  (sram-set-byte (+ pl i) pt))
-(go-address (lookup-symbol "__stop_program"))
-(close-output-port OUT)
-
+(go-address (lookup-symbol "main"))
 (fetch-and-decode)
-
-(go-address (lookup-symbol "transmit_ATR"))
-(go-address (lookup-symbol "receive_APDU"))
-(go-address #x5f)
-(go-address #x61)
-(go-address #xcf3)
-
-
-(go-address (lookup-symbol "delayparity")))
-(go-address #xcf7)
-(go-address #xd05)
-(fetch-and-decode)
-
-(set! PC (lookup-symbol "aes_initkey"))
-(set! PC (lookup-symbol "do_aes_encrypt"))
-
-
-(print-symbols)
-
-(set! PC #x725)
-
-(print-sram)
-(print-registers)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Opcodes
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; 
-;; keep track of current clock cycle current clock cycle
