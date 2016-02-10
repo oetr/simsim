@@ -1,0 +1,25 @@
+* Objectives 
+Simulate code execution of some chosen microcontrollers.
+
+* Running instructions
+- you need a hex-file compiled for an atmega163
+- you need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
+- start Racket
+- open the file
+- load hex and elf files
+- run 
+- for examples, see the test directory
+
+* Support status
+- ATMega163 (small subset of instructions can be simulated)
+
+* TODO Next steps
+** TODO Separate fetching and execution
+- fetch: analyzes the instruction and extracts its arguments
+- execute: takes the arguments and executes the instruction
+-> we can look at the code without executing it!
+-> the code might look less messy
+** TODO Add clock cycles
+** TODO Opcode analysis: what is the Hamming weight of each opcode?
+** TODO Work out the file-format for saved data
+* DONE FINISHED
