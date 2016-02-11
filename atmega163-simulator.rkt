@@ -942,6 +942,7 @@
   )
 
 (define (go-address address)
+  (fetch-and-decode)
   (let loop ()
     (if (= PC address)
         'DONE
@@ -953,15 +954,22 @@
     (printf "R~a = ~a~n" r (num->hex (sram-get-byte r)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Testing instructions
+;; Prepare the test hex/elf-file
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Get the symbol table
 (define symbol-file "./tests/main.sim")
 (load-symbol-table symbol-file)
 ;; Load the hex file
 (define hex-file "./tests/main.hex")
-(reset-machine)
-(hex->flash! "./tests/main.hex")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Run tests
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define debug? #t)
-(go-address (lookup-symbol "main"))
+(reset-machine)
+(hex->flash! hex-file)
 (fetch-and-decode)
+
+(go-address (lookup-symbol "main"))
+(go-address 0)
+

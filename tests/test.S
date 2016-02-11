@@ -1,10 +1,14 @@
-.org 0x0000
-__vectors:
-	rjmp main
+.set RAMEND,0x045f
+.set SPH,0x3e
+.set SPL,0x3d
 
 .section .text
 .global main
-main:	
+main:
+	ldi r16,hi8(RAMEND)
+	out SPH,r16
+	ldi r16,lo8(RAMEND)
+	out SPL,r16
 	nop
 
 testSetConstant:		; Assign register to a constant
