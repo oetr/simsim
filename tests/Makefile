@@ -89,7 +89,7 @@ OPT = 0
 #     Native formats for AVR-GCC's -g are dwarf-2 [default] or stabs.
 #     AVR Studio 4.10 requires dwarf-2.
 #     AVR [Extended] COFF format requires stabs, plus an avr-objcopy run.
-DEBUG = dwarf-2
+DEBUG = stabs
 
 
 # List any extra directories to look for include files here.

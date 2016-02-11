@@ -1,7 +1,12 @@
+;;; Constants
 .set RAMEND,0x045f
 .set SPH,0x3e
 .set SPL,0x3d
 
+.org 0x0000
+__vectors:
+	rjmp main
+	
 .section .text
 .global main
 main:

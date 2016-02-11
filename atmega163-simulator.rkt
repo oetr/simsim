@@ -1,4 +1,4 @@
-(require racket racket/main)
+(require racket racket/main rackunit)
 ;; develop an abstract machine that is loaded with a hex /elf file,
 ;; is given a start address, and can simulate the execution
 
@@ -124,7 +124,7 @@
 (num->hex (flash-get-word #x0d))
 
 (define RAMEND (+ #x045f 1))
-(define SRAM (make-vector RAMEND #xff))
+(define SRAM (make-vector RAMEND #x00))
 ;; get and set bytes
 (define (sram-get-byte addr) (vector-ref SRAM addr))
 (define (sram-set-byte addr val) (vector-set! SRAM addr val))
@@ -176,6 +176,8 @@
       (string-append "0" (num->hex num))
       (num->hex num)))
 (define (print-sram)
+  (define (dots-when-zero num)
+    (if (zero? num) ".." (num->hexb num)))
   (printf "    ")
   (for ([i #x10])
     (printf "~a  " (num->hex i)))
@@ -192,7 +194,7 @@
     (when (or (< byte 32) (> byte 126))
         (set! char #"."))
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
-    (printf "~a " (num->hexb byte))))
+    (printf "~a " (dots-when-zero byte))))
 (define (print-io)
   (printf "   ")
   (for ([i #x10])
@@ -280,8 +282,8 @@
 (define OUT (current-output-port))
 
 (define (reset-machine (filename #f))
-  (set! FLASH (make-vector FLASHEND #xff))
-  (set! SRAM (make-vector RAMEND #xff))
+  (set! FLASH (make-vector FLASHEND #x00))
+  (set! SRAM (make-vector RAMEND #x00))
   (for ([i #x60]) (vector-set! SRAM i 0))
   (set! PC 0)
   (if filename
@@ -968,8 +970,6 @@
 (define debug? #t)
 (reset-machine)
 (hex->flash! hex-file)
-(fetch-and-decode)
-
 (go-address (lookup-symbol "main"))
-(go-address 0)
+(go-address (lookup-symbol "main"))
 
