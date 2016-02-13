@@ -121,21 +121,51 @@
   (if (bitwise-bit-set? addr 0)      
       (arithmetic-shift word -8)
       (bitwise-and word #x00ff)))
-(num->hex (flash-get-word #x0d))
+(define (print-flash)
+  (define (dots-when-zero num)
+    (if (zero? num) ".." (num->hexb num)))
+  (printf "    ")
+  (for ([i #x10])
+    (printf "~a  " (num->hex i)))
+  (define accumulated-bytes (bytes))
+  (for ([addr FLASHEND])
+    (when (zero? (modulo addr #x10))
+      (printf "~a~n~a " 
+              accumulated-bytes (num->hex (quotient addr #xf)))
+      (when (< (quotient addr #xf) #x10) (printf " "))
+      (set! accumulated-bytes (bytes)))
+    (define byte (flash-get-byte addr))
+    (define char (bytes byte))
+    (when (or (< byte 35) (> byte 126))
+        (set! char #"."))
+    (set! accumulated-bytes (bytes-append accumulated-bytes char))
+    (printf "~a " (dots-when-zero byte)))
+  (printf "~a~n " accumulated-bytes))
 
 (define RAMEND (+ #x045f 1))
 (define SRAM (make-vector RAMEND #x00))
 ;; get and set bytes
-(define (sram-get-byte addr) (vector-ref SRAM addr))
-(define (sram-set-byte addr val) (vector-set! SRAM addr val))
+(define (sram-get-byte addr)
+  (if (>= addr RAMEND)
+      (begin
+        (printf "WARNING: address outside RAMEND ~a~n" 
+                (num->hex addr))
+        (vector-ref SRAM (modulo (+ addr IO-SIZE) RAMEND)))
+      (vector-ref SRAM addr)))
+(define (sram-set-byte addr val)
+  (if (> addr RAMEND)
+      (begin
+        (print "WARNING: address outside RAMEND~n")
+        (vector-set! SRAM (modulo (+ addr IO-SIZE) RAMEND) val))
+      (vector-set! SRAM addr val)))
 (define (sram-print)
   (for ([addr RAMEND])
     (printf "~a " (num->hex (sram-get-byte addr)))))
 (define (sram-set-bit addr i)
-  (vector-set! SRAM addr (ior (vector-ref SRAM addr) (<< 1 i))))
+  (sram-set-byte addr (ior (sram-get-byte addr) (<< 1 i))))
 (define (sram-clear-bit addr i)
-  (vector-set! SRAM addr (& (vector-ref SRAM addr) 
-                            (bitwise-not (<< 1 i)))))
+  (sram-set-byte addr (& (sram-get-byte addr)
+                         (bitwise-not (<< 1 i)))))
 (define (sram-get-bit addr i)
   (& (<< (vector-ref SRAM addr) (- i)) 1))
 ;; map register file
@@ -159,8 +189,8 @@
   (sram-set-byte 30 (& z #xff)))
 
 
-
 ;; map I/O
+(define IO-SIZE 64)
 (define (io-set addr value)
   (sram-set-byte (+ addr #x20) value))
 (define (io-get addr)
@@ -171,10 +201,33 @@
   (sram-clear-bit (+ addr #x20) i))
 (define (io-get-bit addr i)
   (sram-get-bit (+ addr #x20) i))
+
+(define (print-io)
+  (define (dots-when-zero num)
+    (if (zero? num) ".." (num->hexb num)))
+  (printf "    ")
+  (for ([i #x10])
+    (printf "~a  " (num->hex i)))
+  (define accumulated-bytes (bytes))
+  (for ([addr IO-SIZE])
+    (when (zero? (modulo addr #x10))
+      (printf "~a~n~a " 
+              accumulated-bytes (num->hex (quotient addr #xf)))
+      (when (< (quotient addr #xf) #x10) (printf " "))
+      (set! accumulated-bytes (bytes)))
+    (define byte (io-get addr))
+    (define char (bytes byte))
+    (when (or (< byte 35) (> byte 126))
+        (set! char #"."))
+    (set! accumulated-bytes (bytes-append accumulated-bytes char))
+    (printf "~a " (dots-when-zero byte)))
+  (printf "~a~n " accumulated-bytes))
+
 (define (num->hexb num)
   (if (<= num #xf) 
       (string-append "0" (num->hex num))
       (num->hex num)))
+
 (define (print-sram)
   (define (dots-when-zero num)
     (if (zero? num) ".." (num->hexb num)))
@@ -182,19 +235,20 @@
   (for ([i #x10])
     (printf "~a  " (num->hex i)))
   (define accumulated-bytes (bytes))
-  (define i 0)
   (for ([addr RAMEND])
     (when (zero? (modulo addr #x10))
-      (printf "~a~n~a " accumulated-bytes
-              (num->hex (quotient addr #xf)))
+      (printf "~a~n~a " 
+              accumulated-bytes (num->hex (quotient addr #xf)))
       (when (< (quotient addr #xf) #x10) (printf " "))
       (set! accumulated-bytes (bytes)))
     (define byte (sram-get-byte addr))
     (define char (bytes byte))
-    (when (or (< byte 32) (> byte 126))
+    (when (or (< byte 35) (> byte 126))
         (set! char #"."))
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
-    (printf "~a " (dots-when-zero byte))))
+    (printf "~a " (dots-when-zero byte)))
+  (printf "~a~n " accumulated-bytes))
+
 (define (print-io)
   (printf "   ")
   (for ([i #x10])
@@ -243,7 +297,7 @@
 
 ;; Stack
 (define (get-sp)
-  (ior (<< (sram-get-byte #x5e) 8)
+  (ior (&<< (sram-get-byte #x5e) #b00000111 8)
        (sram-get-byte #x5d)))
 (define (inc-sp (n -2))
   (define sp (+ (get-sp) n))
@@ -284,7 +338,7 @@
 (define (reset-machine (filename #f))
   (set! FLASH (make-vector FLASHEND #x00))
   (set! SRAM (make-vector RAMEND #x00))
-  (for ([i #x60]) (vector-set! SRAM i 0))
+  (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! PC 0)
   (if filename
       (begin
@@ -304,9 +358,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 3) opcode interpreter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; make sure to fetch 32-bit instructions properly
-
 ;; shift + and
 (define (<<& num shift-num (and-num #xf))
   (bitwise-and (arithmetic-shift num shift-num)
@@ -324,7 +375,7 @@
 (define ior bitwise-ior)
 (define (one? num) (not (zero? num)))
 
-
+;; TODO: make sure to fetch 32-bit instructions properly
 (define (is-two-word-instruction? addr)
   #f)
 
@@ -336,10 +387,11 @@
   (define hb1 (<<& opcode -8 #xf))
   (define hb0 (<<& opcode -12 #xf))
   ;;(when (not debug?) 
-    ;;(fprintf OUT "\r~a" iteration) )
-  (when debug? 
+  ;;(fprintf OUT "\r~a" iteration) )
+  (when debug?     
     (fprintf OUT "[~a] ~a: " (num->hex PC) (num->hex opcode)))
   ;;(set! iteration (+ iteration 1))
+  (define symbol (lookup-address PC))
   (inc-pc)
   (cond [(= opcode #x95c8) ;;;;;;;;;;;; LPM
          (define z (get-z))
@@ -347,7 +399,17 @@
          (sram-set-byte 0 z-val)
          (when debug? (fprintf OUT "LPM R0 <- ~a[~a]" z (num->hex z-val)))
          ]
-        [(and (= hb0 #b1001) ;;;;;;;;;;;; LPM 
+        [(and (= hb0 #b1001) ;;;;;;;;;;;; LPM Rd,Z
+              (= (& hb1 #b1110) 0)
+              (= hb3 #b0100))
+         (define z (get-z))
+         (define z-val (flash-get-byte z))
+         (define Rd (ior (&<< hb1 1 4) hb2))
+         (sram-set-byte Rd z-val)
+         (when debug? (fprintf OUT "LPM R~a <- Z(~a)[~a]" 
+                               Rd (num->hex z) (num->hex z-val)))
+         ]
+        [(and (= hb0 #b1001) ;;;;;;;;;;;; LPM Z+
               (= (& hb1 #b1110) 0)
               (= hb3 #b0101))
          (define z (get-z))
@@ -363,6 +425,16 @@
          (sram-set-byte Rd K)
          (when debug? (fprintf OUT "LDI R~a <- K[~a]" Rd (num->hex K)))
          ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;; LDD Rd <- (X+)
+              (= (<< hb1 -1) #b000)
+              (= hb3 #b1101))
+         (define Rd (ior (&<< hb1 1 4) hb2))
+         (define x (get-x))
+         (define x-val (sram-get-byte x))
+         (sram-set-byte Rd x-val)
+         (inc-x)
+         (when debug? (fprintf OUT "LD R~a <- X+(~a)[~a]" Rd x (num->hex x-val)))
+         ]
         [(and (= hb0 #b1000)  ;;;;;;;;;;;;; LDD Rd <- (Z)
               (= (<< hb1 -1) #b000)
               (= hb3 0))
@@ -371,6 +443,16 @@
          (define z-val (sram-get-byte z))
          (sram-set-byte Rd z-val)
          (when debug? (fprintf OUT "LD R~a <- Z(~a)[~a]" Rd z (num->hex z-val)))
+         ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;; LDD Rd <- (Z+)
+              (= (<< hb1 -1) #b000)
+              (= hb3 #b0001))
+         (define Rd (ior (&<< hb1 1 4) hb2))
+         (define z (get-z))
+         (define z-val (sram-get-byte z))
+         (sram-set-byte Rd z-val)
+         (inc-z)
+         (when debug? (fprintf OUT "LD R~a <- Z+(~a)[~a]" Rd z (num->hex z-val)))
          ]
         [(and (= (& hb0 #b1101) #b1000)  ;;;;;;;;;;;;; LDD Rd <- (Z+q)
               (= (& hb1 #b0010) 0)
@@ -393,6 +475,16 @@
          (define y-val (sram-get-byte y))
          (sram-set-byte Rd y-val)
          (when debug? (fprintf OUT "LD R~a <- Y(~a)[~a]" Rd y (num->hex y-val)))
+         ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;; LDD Rd <- (Y+)
+              (= (<< hb1 -1) #b000)
+              (= hb3 #b1001))
+         (define Rd (ior (&<< hb1 1 4) hb2))
+         (define y (get-y))
+         (define y-val (sram-get-byte y))
+         (sram-set-byte Rd y-val)
+         (inc-y)
+         (when debug? (fprintf OUT "LD R~a <- Y+(~a)[~a]" Rd y (num->hex y-val)))
          ]
         [(and (= (<< hb0 -2) #b10)  ;;;;;;;;;;;;; LDD Rd <- (Y+k)
               (n! hb0 0)
@@ -422,9 +514,14 @@
               (= hb1 #b0001))
          (define Rd (<< hb2 1)) (define Rd+ (+ Rd 1))
          (define Rr (<< hb3 1)) (define Rr+ (+ Rr 1))
-         (sram-set-byte Rd (sram-get-byte Rr))
-         (sram-set-byte Rd+ (sram-get-byte Rr+))
-         (when debug? (fprintf OUT "MOVW R~a:R~a,R~a:R~a "  Rd Rd+ Rr Rr+ ))
+         (define Rr-val (sram-get-byte Rr))
+         (define Rr+-val (sram-get-byte Rr+))
+         (sram-set-byte Rd Rr-val)
+         (sram-set-byte Rd+ Rr+-val)
+         (when debug? (fprintf OUT "MOVW R~a:R~a,R~a:R~a <- ~a ~a"  
+                               Rd Rd+ Rr Rr+
+                               (num->hexb Rr-val)
+                               (num->hexb Rr+-val)))
          ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;; ST(X+) <- Rr
               (= (<< hb1 -1) #b001)
@@ -550,16 +647,18 @@
          (define Rr (ior (&<< hb1 #b0010 3) hb3))
          (define Rd-val (sram-get-byte Rd))
          (define Rr-val (sram-get-byte Rr))
-         (define result (bitwise-xor Rd-val Rr-val))
-         (sram-set-byte Rd result)
+         (define R (bitwise-xor Rd-val Rr-val))
+         (sram-set-byte Rd R)
          (sr-clear-V)
-         (if (! result 7) (sr-set-N) (sr-clear-N))
+         (if (! R 7) (sr-set-N) (sr-clear-N))
          (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
              (sr-set-S) (sr-clear-S))
-         (if (zero? result) (sr-set-Z) (sr-clear-Z))
-         (when debug? (fprintf OUT "EOR R~a,R~a ; R~a <- ~a xor ~a" Rd Rr Rd 
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (when debug? (fprintf OUT "EOR R~a,R~a ; R~a <- ~a xor ~a = ~a" 
+                               Rd Rr Rd 
                                (num->hex Rd-val)
-                               (num->hex Rr-val)))
+                               (num->hex Rr-val)
+                               (num->hex R)))
          ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; INC
               (= (<<& hb1 -1 #b111) #b010)
@@ -587,7 +686,7 @@
          (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
              (sr-set-S) (sr-clear-S))
          (if (zero? R) (sr-set-Z) (sr-clear-Z))
-         (when debug? (fprintf OUT "DEC R~a ; R~a <- ~a"  Rd Rd (num->hex Rd-val)))
+         (when debug? (fprintf OUT "DEC R~a ; R~a[~a] <- ~a"  Rd Rd (num->hex Rd-val) (num->hex R)))
          ]
         [(and (= hb0 #b0001)  ;;;;;;;;;;;;;;;;;;;; CPSE
               (= (<<& hb1 -2 #b11) #b00))
@@ -619,7 +718,11 @@
          (define A-val (io-get A))
          (define Rd (ior (&<< hb1 #b0001 4) hb2))
          (sram-set-byte Rd A-val)
-         (when debug? (fprintf OUT "IN R~a,A ; R~a<-~a" Rd Rd (num->hex A-val)))
+         (when debug? (fprintf OUT "IN R~a,A(~a) ; R~a<-~a" 
+                               Rd
+                               (num->hex A)
+                               Rd 
+                               (num->hex A-val)))
          ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; PUSH
               (= (& hb1 #b1110) #b0010)
@@ -661,6 +764,40 @@
          (if (zero? result) (sr-set-Z) (sr-clear-Z))
          (if (> K Rd-val) (sr-set-C) (sr-clear-C))
          (when debug? (fprintf OUT "CPI R~a,~a ; ~a-~a=~a" Rd K Rd-val K result))
+         ]
+        [(and (= hb0 #b0001)  ;;;;;;;;;;;;;;;;;;;; CP
+              (= (<< hb1 -2 ) #b01))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rr (ior (&<< hb1 #b0010 3) hb3))
+         (define Rd-val (sram-get-byte Rd))
+         (define Rr-val (sram-get-byte Rr))
+         (define R (& (- Rd-val Rr-val) #xff)) ;; result
+         (if (one? (ior (& (n-bit-ref Rd-val 3) (bit-ref Rr-val 3))
+                        (& (bit-ref Rr-val 3) (bit-ref R 3))
+                        (& (bit-ref R 3) (n-bit-ref Rd-val 3))))
+             (sr-set-H) (sr-clear-H))
+         (if (one? (ior (& (bit-ref Rd-val 7)
+                           (n-bit-ref Rr-val 7) 
+                           (n-bit-ref R 7))
+                        (& (n-bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7) 
+                           (bit-ref R 7))))
+             (sr-set-V) (sr-clear-V))
+         (if (! R 7) (sr-set-N) (sr-clear-N))
+         (if (= (bitwise-xor (sr-get-N) (sr-get-V)) 1)
+             (sr-set-S) (sr-clear-S))
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (if (one? (ior (& (n-bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7))
+                        (& (bit-ref Rr-val 7)
+                           (bit-ref R 7))
+                        (& (bit-ref R 7)
+                           (n-bit-ref Rd-val 7))))
+             (sr-set-C) (sr-clear-C))
+         (when debug? (fprintf OUT "CP R~a,R~a ; ~a-~a=~a"
+                               Rd Rr (num->hex Rd-val)
+                               (num->hex Rr-val)
+                               (num->hex R)))
          ]
         [(and (= hb0 #b0000)  ;;;;;;;;;;;;;;;;;;;; CPC
               (= (<< hb1 -2 ) #b01))
@@ -724,6 +861,57 @@
              (sr-set-C) (sr-clear-C))
          (when debug? (fprintf OUT "SUBI R~a,A ; ~a-~a=~a" Rd Rd-val K R))
          ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; ADIW
+              (= hb1 #b0110))
+         (define K (ior (&<< hb2 #b1100 2) hb3))
+         (define Rd (+ 24 (&<< hb2 #b0011 1)))
+         (define Rd+ (+ Rd 1))
+         (define Rdh (sram-get-byte Rd+))
+         (define Rdl (sram-get-byte Rd))
+         (define Rd-val (ior (<< Rdh 8) Rdl))
+         (define R (& (+ Rd-val K) #xffff))
+         (sram-set-byte Rd+ (<< R -8))
+         (sram-set-byte Rd (& R #xff))
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (if (one? (& (n-bit-ref R 15)
+                      (bit-ref Rdh 7)))
+             (sr-set-C) (sr-clear-C))
+         (if (! R 15) (sr-set-N) (sr-clear-N))
+         (if (one? (& (bit-ref R 15)
+                      (n-bit-ref Rdh 7)))
+             (sr-set-V) (sr-clear-V))
+         (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
+             (sr-set-S) (sr-clear-S))
+         (when debug? (fprintf OUT "ADIW R~a:R~a,K[~a] ; ~a+~a=~a" Rd Rd+ K Rd-val K R))
+         ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; SBIW
+              (= hb1 #b0111))
+         (define K (ior (&<< hb2 #b1100 2) hb3))
+         (define Rd (+ 24 (&<< hb2 #b0011 1)))
+         (define Rd+ (+ Rd 1))
+         (define Rdh (sram-get-byte Rd+))
+         (define Rdl (sram-get-byte Rd))
+         (define Rd-val (ior (<< Rdh 8) Rdl))
+         (define R (& (- Rd-val K) #xffff))
+         (sram-set-byte Rd+ (<< R -8))
+         (sram-set-byte Rd (& R #xff))
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (if (one? (& (bit-ref R 15)
+                      (n-bit-ref Rdh 7)))
+             (sr-set-C) (sr-clear-C))
+         (if (! R 15) (sr-set-N) (sr-clear-N))
+         (if (one? (& (n-bit-ref R 15)
+                      (bit-ref Rdh 7)))
+             (sr-set-V) (sr-clear-V))
+         (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
+             (sr-set-S) (sr-clear-S))
+         (when debug? (fprintf OUT "SBIW R~a:R~a,K[~a] ; ~a-~a=~a"
+                               Rd Rd+
+                               (num->hex K) 
+                               (num->hex Rd-val) 
+                               (num->hex K) 
+                               (num->hex R)))
+         ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; CBI
               (= hb1 #b1000))
          (define b (& hb3 #b111))
@@ -739,6 +927,15 @@
                         (<< hb3 -3)))
          (io-set-bit A b)
          (when debug? (fprintf OUT "SBI A[~a],b[~a]"
+                              (num->hex A) b))
+         ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; SBIW
+              (= hb1 #b1010))
+         (define b (& hb3 #b0111))
+         (define A (ior (<< hb2 1)
+                        (<< hb3 -3)))
+         (io-set-bit A b)
+         (when debug? (fprintf OUT "SBIW A[~a],b[~a]"
                               (num->hex A) b))
          ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; SBIC
@@ -816,11 +1013,12 @@
                                       (ior (&<< hb1 #b11 5)
                                            (<< hb2 1)
                                            (&<< hb3 #b1000 -3))))
-         (when (one? (sr-get-Z))
-           (set! PC (+ PC k)))
-         (when debug? (fprintf OUT "BREQ ~a ; ~a -> ~a" k (zero? (sr-get-Z)) (num->hex PC)))
+         (define condition? (one? (sr-get-Z)))
+         (when condition? (set! PC (+ PC k)))
+         (when debug? (fprintf OUT "BREQ ~a ; ~a -> ~a" 
+                               k condition? (num->hex PC)))
          ]
-        [(and (= hb0 #b1111)  ;;;;;;;;;;;;;;;;;;;; BRCS
+                [(and (= hb0 #b1111)  ;;;;;;;;;;;;;;;;;;;; BRCS
               (= (<< hb1 -2 ) #b00)
               (= (& hb3 #b111) #b000))
          (define k (2-complement->num 7
@@ -829,33 +1027,115 @@
                                            (&<< hb3 #b1000 -3))))
          (define C (sr-get-C))
          (when (one? C)
-           (set! PC (+ PC k C)))
+           (set! PC (+ PC k)))
          (when debug? (fprintf OUT "BRCS ~a ; ~a -> ~a"  k (one? C) (num->hex PC)))
          ]
-        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; ADDIW
-              (= hb1 #b0110))
-         (define K (ior (&<< hb2 #b1100 2) hb3))
-         (define Rd (+ 24 (&<< hb2 #b0011 1))) (define Rd+ (+ Rd 1))
-         (define R (ior (<< (sram-get-byte Rd+) 8)
-                        (sram-get-byte Rd)))
-         (define result (& (+ R K) #xffff))
-         (sram-set-byte Rd+ (<< result -8))
-         (sram-set-byte Rd (& result #xff))
-         (if (zero? result) (sr-set-Z) (sr-clear-Z))
-         (if (one? (& (n-bit-ref result 15)
-                      (bit-ref Rd+ 7)))
+        [(and (= hb0 #b1111)  ;;;;;;;;;;;;;;;;;;;; BRTC
+              (= (<< hb1 -2 ) #b01)
+              (= (& hb3 #b0111) #b110))
+         (define k (2-complement->num 7
+                                      (ior (&<< hb1 #b11 5)
+                                           (<< hb2 1)
+                                           (&<< hb3 #b1000 -3))))
+         (define T (sr-get-T))
+         (when (zero? T)
+           (set! PC (+ PC k)))
+         (when debug? (fprintf OUT "BRTC ~a ; ~a -> ~a" 
+                               (num->hex k) (zero? T) (num->hex PC)))
+         ]
+        [(and (= hb0 #b1111)  ;;;;;;;;;;;;;;;;;;;; BRCC
+              (= (& hb1 #b1100) #b0100)
+              (= (& hb3 #b0111) #b000))
+         (define k (2-complement->num 7
+                                      (ior (&<< hb1 #b11 5)
+                                           (<< hb2 1)
+                                           (&<< hb3 #b1000 -3))))
+         (define C (sr-get-C))
+         (when (zero? C)
+           (set! PC (+ PC k)))
+         (when debug? (fprintf OUT "BRCC ~a ; ~a -> ~a"  k (one? C) (num->hex PC)))
+         ]
+        [(and (= hb0 0)  ;;;;;;;;;;;;;;;;;;;; ADD without carry
+              (= (& hb1 #b1100) #b1100))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rr (ior (&<< hb1 #b0010 3) hb3))
+         (define Rd-val (sram-get-byte Rd))
+         (define Rr-val (sram-get-byte Rr))
+         (define R (& (+ Rd-val Rr-val) #xff))
+         (sram-set-byte Rd R)
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (if (one? (ior (& (bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7))
+                        (& (bit-ref Rr-val 7)
+                           (n-bit-ref R 7))
+                        (& (n-bit-ref R 7)
+                           (bit-ref Rd-val 7))))
              (sr-set-C) (sr-clear-C))
-         (if (! result 15) (sr-set-N) (sr-clear-N))
-         (if (one? (& (bit-ref result 15)
-                      (n-bit-ref Rd+ 7)))
-             (sr-set-C) (sr-clear-C))
+         (if (! R 7) (sr-set-N) (sr-clear-N))
+         (if (one? (ior (& (bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7)
+                           (n-bit-ref R 7))
+                        (& (n-bit-ref Rd-val 7)
+                           (n-bit-ref Rr-val 7)
+                           (bit-ref R 7))))
+             (sr-set-V) (sr-clear-V))
          (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
              (sr-set-S) (sr-clear-S))
-         (when debug? (fprintf OUT "ADDIW R~a:R~a,K[~a] ; ~a+~a=~a" Rd Rd+ K R K result))
+         (if (one? (ior (& (bit-ref Rd-val 3)
+                          (bit-ref Rr-val 3))
+                       (& (bit-ref Rr-val 3)
+                          (n-bit-ref R 3))
+                       (& (n-bit-ref R 3)
+                          (bit-ref Rd-val 3))))
+             (sr-set-H)(sr-clear-H))
+         (when debug? 
+           (fprintf OUT "ADD R~a:R~a ; R~a <- ~a + ~a = ~a" 
+                    Rd Rr Rd 
+                    (num->hexb Rd-val) 
+                    (num->hexb Rr-val)
+                    (num->hexb R)))
          ]
-        [(= opcode #x94f8)  ;;;;;;;;;;;;;;;;;;;; CLI
-         (sr-clear-I)
-         (when debug? (fprintf OUT "CLI"))
+        [(and (= hb0 1)  ;;;;;;;;;;;;;;;;;;;; ADC with carry
+              (= (& hb1 #b1100) #b1100))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rr (ior (&<< hb1 #b0010 3) hb3))
+         (define Rd-val (sram-get-byte Rd))
+         (define Rr-val (sram-get-byte Rr))
+         (define C (sr-get-C))
+         (define R (& (+ Rd-val Rr-val C) #xff))
+         (sram-set-byte Rd R)
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (if (one? (ior (& (bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7))
+                        (& (bit-ref Rr-val 7)
+                           (n-bit-ref R 7))
+                        (& (n-bit-ref R 7)
+                           (bit-ref Rd-val 7))))
+             (sr-set-C) (sr-clear-C))
+         (if (! R 7) (sr-set-N) (sr-clear-N))
+         (if (one? (ior (& (bit-ref Rd-val 7)
+                           (bit-ref Rr-val 7)
+                           (n-bit-ref R 7))
+                        (& (n-bit-ref Rd-val 7)
+                           (n-bit-ref Rr-val 7)
+                           (bit-ref R 7))))
+             (sr-set-V) (sr-clear-V))
+         (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
+             (sr-set-S) (sr-clear-S))
+         (if (one? (ior (& (bit-ref Rd-val 3)
+                          (bit-ref Rr-val 3))
+                       (& (bit-ref Rr-val 3)
+                          (n-bit-ref R 3))
+                       (& (n-bit-ref R 3)
+                          (bit-ref Rd-val 3))))
+             (sr-set-H)(sr-clear-H))
+         (when debug? 
+           (fprintf OUT "ADC R~a:R~a ; R~a <- ~a + ~a + ~a = ~a" 
+                    Rd Rr Rd 
+                    (num->hexb Rd-val) 
+                    (num->hexb Rr-val)
+                    C
+                    (num->hexb R)))
          ]
         [(and (= hb0 #b0010)  ;;;;;;;;;;;;;;;;;;;; AND
               (= (& hb1 #b1100) 0))
@@ -890,12 +1170,53 @@
          (if (zero? R) (sr-set-Z) (sr-clear-Z))
          (when debug? (fprintf OUT "ROR R~a[~a] ; <- ~a" Rd Rd-val R))
          ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; LSR
+              (= (& hb1 #b1110) #b0100)
+              (= hb3 #b0110))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rd-val (sram-get-byte Rd))
+         (define R (<< Rd-val -1))
+         (sram-set-byte Rd R)
+         (if (! Rd-val 0) (sr-set-C) (sr-clear-C))
+         (if (zero? R) (sr-set-Z) (sr-clear-Z))
+         (sr-clear-N)
+         (if (one? (bitwise-xor (sr-get-N) (sr-get-C)))
+             (sr-set-V) (sr-clear-V))
+         (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
+             (sr-set-S) (sr-clear-S))
+         (when debug? (fprintf OUT "LSR R~a[~a] ; <- ~a" 
+                               Rd 
+                               (num->hex Rd-val)
+                               (num->hex R)))
+         ]
+        [(and (= hb0 #b1111) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; BST
+              (= (& hb1 #b1110) #b1010)
+              (= (& hb3 #b1000) 0))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rd-val (sram-get-byte Rd))
+         (define b (& hb3 #b0111))
+         (if (! Rd-val b) (sr-set-T) (sr-clear-T))
+         (when debug? (fprintf OUT "BST R~a[~a],b ; T <- ~a" 
+                               Rd 
+                               (num->hex Rd-val)
+                               (sr-get-T)
+                               ))]
+        [(= opcode #x94f8)  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; CLI
+         (sr-clear-I)
+         (when debug? (fprintf OUT "CLI"))
+         ]
         [(= opcode #b1001010010001000)  ;;;;;;;;;;;;;;;;;;;; CLC
          (sr-clear-C)
          (when debug? (fprintf OUT "CLC"))]
+        [(= opcode #b1001010011101000)  ;;;;;;;;;;;;;;;;;;;; CLT
+         (sr-clear-T)
+         (when debug? (fprintf OUT "CLT"))]
         [(= opcode #b1001010000001000)  ;;;;;;;;;;;;;;;;;;;; SEC
          (sr-set-C)
          (when debug? (fprintf OUT "SEC"))]
+        [(= opcode #b1001010001101000)  ;;;;;;;;;;;;;;;;;;;; SET
+         (sr-set-T)
+         (when debug? (fprintf OUT "SET"))]
         [(and (= hb0 0)  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; SBC
               (= (& hb1 #b1100) #b1000))
          (define Rd (ior (&<< hb1 #b0001 4) hb2))
@@ -929,6 +1250,7 @@
              (sr-set-C) (sr-clear-C))
             (when debug? (fprintf OUT "SBC R~a,R~a ; R~a <- ~a - ~a - ~a = ~a"
                                  Rd Rr Rd Rd-val Rr-val C R))]
+        
         [(zero? opcode)  ;;;;;;;;;;;;;;;;;;;; NOP
          (when debug? (fprintf OUT "NOP"))]       
         
@@ -937,9 +1259,8 @@
           (fprintf OUT "UNKNOWN ~a ~a ~a ~a" 
                   (num->bin hb0)(num->bin hb1)(num->bin hb2)(num->bin hb3))
          ])
-  (when debug?
-    (define symbol (lookup-address PC))
-    (when symbol (fprintf OUT " ;; ----> ~a" symbol))
+  (when debug?    
+    (when symbol (fprintf OUT " ;; <---------- ~a" symbol))
     (fprintf OUT "~n"))
   )
 
@@ -947,7 +1268,7 @@
   (fetch-and-decode)
   (let loop ()
     (if (= PC address)
-        'DONE
+        (fetch-and-decode)
         (begin (fetch-and-decode)
                (loop)))))
 
@@ -959,17 +1280,17 @@
 ;; Prepare the test hex/elf-file
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Get the symbol table
-(define symbol-file "./tests/main.sim")
-(load-symbol-table symbol-file)
-;; Load the hex file
-(define hex-file "./tests/main.hex")
+;; (define symbol-file "./tests/main.sim")
+;; (load-symbol-table symbol-file)
+;; ;; Load the hex file
+;; (define hex-file "./tests/main.hex")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Run tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define debug? #t)
-(reset-machine)
-(hex->flash! hex-file)
-(go-address (lookup-symbol "main"))
-(go-address (lookup-symbol "main"))
+;; (define debug? #t)
+;; (reset-machine)
+;; (hex->flash! hex-file)
+;; (go-address (lookup-symbol "main"))
+;; (go-address (lookup-symbol "main"))
 
