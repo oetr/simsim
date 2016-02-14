@@ -1,5 +1,6 @@
 * Objectives 
-Simulate code execution of some chosen microcontrollers.
+- Simulate code execution of the ATMega163 microcontroller.
+- Keep track of current clock cycles.
 
 * Running instructions
 - you need a hex-file compiled for an atmega163
@@ -11,11 +12,10 @@ Simulate code execution of some chosen microcontrollers.
 - for examples, see the test directory
 
 * Support status
-- ATMega163 (small subset of instructions can be simulated)
+- ATMega163: small subset of instructions can be simulated
 
 * TODO Next steps
 ** TODO Add tests for each assembly instruction
-** TODO Keep track of number of passed clock cycles
 ** TODO Add a comfortable testsuite: assembly + Racket tests
 ** TODO Make a Racket module with nice abstractions instead of one huge file
 ** TODO Separate fetching and execution
@@ -26,3 +26,4 @@ Simulate code execution of some chosen microcontrollers.
 ** TODO Opcode analysis: what is the Hamming weight of each opcode?
 ** TODO Work out the file-format for saved data
 * DONE FINISHED
+** DONE Keep track of number of passed clock cycles
