@@ -16,6 +16,9 @@
 
 * TODO Next steps
 ** TODO Add tests for each assembly instruction
+:LOGBOOK:
+CLOCK: [2016-02-16 Tue 22:17]
+:END:
 ** TODO Add a comfortable testsuite: assembly + Racket tests
 ** TODO Make a Racket module with nice abstractions instead of one huge file
 ** TODO Separate fetching and execution

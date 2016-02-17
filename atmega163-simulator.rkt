@@ -384,6 +384,8 @@
 (define (is-two-word-instruction? addr)
   #f)
 
+(define debug? #f)
+
 (define (fetch-and-decode)
   ;; fetch
   (define opcode (next-instruction))
@@ -392,13 +394,10 @@
   (define hb1 (<<& opcode -8 #xf))
   (define hb0 (<<& opcode -12 #xf))
   (define clock-cycles 0)
-  ;;(when (not debug?) 
-  ;;(fprintf OUT "\r~a" iteration) )
   (when debug?     
     (fprintf OUT "(~a): [~a] ~a: "
              CURRENT-CLOCK-CYCLE
              (num->hex PC) (num->hex opcode)))
-  ;;(set! iteration (+ iteration 1))
   (define symbol (lookup-address PC))
   (inc-pc)
   (cond [(= opcode #x95c8) ;;;;;;;;;;;; LPM
