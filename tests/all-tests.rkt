@@ -77,5 +77,18 @@
      (vector-ref sbox i))
     (fetch-and-decode)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ST X,Rr
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(prepare-machine "startTestSTXRr")
+(set! debug? #f)
+(fetch-and-decode)
+(fetch-and-decode)
+(for ([i 256])
+  (step-and-compare-reg-content "startTestSTXRr" (+ #x60 i) 
+                                (vector-ref sbox i) 4))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ST X+,Rr
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(prepare-machine "startTestSTXRr")

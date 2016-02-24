@@ -4,6 +4,10 @@
 .set RAMEND,0x045f
 .set SPH,0x3e
 .set SPL,0x3d
+.set xl,26
+.set xh,27
+.set yl,28
+.set yh,29
 .set zl,30
 .set zh,31
 
@@ -538,6 +542,18 @@ startTestLPMZplusR29:
 1:	
 	LPM R29,z+
 	jmp 1b
+
+startTestSTXRr:
+	ldi zh,hi8(sbox)
+	ldi zl,0x00
+	ldi xh,0x00
+	ldi xl,0x60
+1:	
+	lpm r5,z+
+	ST X,r5
+	adiw xl,1
+	jmp 1b
+	
 	
 testMOV:			; Moving data from registers to each other
 	mov r0,r16
