@@ -1,5 +1,5 @@
 (require racket racket/main rackunit)
-(require "instruction-table.rkt")
+;;(require "instruction-table.rkt")
 ;; Develop an abstract machine that is loaded with a hex /elf file,
 ;; is given a start address, and can simulate the execution
 
@@ -377,6 +377,49 @@
 (define & bitwise-and)
 (define ior bitwise-ior)
 (define (one? num) (not (zero? num)))
+
+
+;; make it easier to access the registers
+(define (get-Rd opcode)
+  (<<& opcode -4 #b11111))
+(define (get-Rr opcode) 
+  (ior (<<& opcode -5 #b10000)
+       (& opcode #xf)))
+;; tests
+;;(num->bin (get-Rd #b0000000111110000))
+;;(num->bin (get-Rr #b0000001111111111))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; get register contents and result and compute flags
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (compute-H r1 r2 result)
+  (if (one? (ior (& (n-bit-ref r1 3) (bit-ref r2 3))
+                 (& (bit-ref r2 3) (bit-ref result 3))
+                 (& (bit-ref result 3) (n-bit-ref r1 3))))
+             (sr-set-H) (sr-clear-H)))
+(define (compute-V r1 r2 result)
+  (if (one? (ior (& (bit-ref r1 7)
+                    (n-bit-ref r2 7) 
+                    (n-bit-ref result 7))
+                 (& (n-bit-ref r1 7)
+                    (bit-ref r2 7) 
+                    (bit-ref result 7))))
+      (sr-set-V) (sr-clear-V)))
+(define (compute-N result) 
+  (if (! result 7) (sr-set-N) (sr-clear-N)))
+(define (compute-S)
+  (if (= (bitwise-xor (sr-get-N) (sr-get-V)) 1)
+      (sr-set-S) (sr-clear-S)))
+(define (compute-Z result)
+  (if (zero? result) (sr-set-Z) (sr-clear-Z)))
+(define (compute-C r1 r2 result)
+  (if (one? (ior (& (n-bit-ref r1 7)
+                    (bit-ref r2 7))
+                 (& (bit-ref r2 7)
+                    (bit-ref result 7))
+                 (& (bit-ref result 7)
+                    (n-bit-ref r1 7))))
+      (sr-set-C) (sr-clear-C)))
 
 ;; TODO: make sure to fetch 32-bit instructions properly
 (define (is-two-word-instruction? addr)
@@ -843,7 +886,8 @@
          (io-set A Rr-val)
          (when debug?
            (print-instruction-uniquely OUT 'OUT)
-           (fprintf OUT "OUT A,R~a[~a]" Rr (num->hex Rr-val)))
+           (fprintf OUT "OUT A[~a],R~a[~a]" 
+                    (num->hex A) Rr (num->hex Rr-val)))
          (set! clock-cycles 1)
          ]
         [(and (= hb0 #b1011)  ;;;;;;;;;;;;;;;;;;;; IN
@@ -983,6 +1027,29 @@
                     C (num->hex R)))
          (set! clock-cycles 1)
          ]
+        [(and (= hb0 #b0001)  ;;;;;;;;;;;;;;;;;;;; SUB
+              (= (& hb1 #b1100) #b1000))
+         (define Rd (get-Rd opcode))
+         (define Rr (get-Rr opcode))
+         (define Rd-val (sram-get-byte Rd))
+         (define Rr-val (sram-get-byte Rr))
+         (define R (& (- Rd-val Rr-val) #xff))
+         (sram-set-byte Rd R)
+         (compute-H Rd-val Rr-val R)
+         (compute-V Rd-val Rr-val R)
+         (compute-N R)
+         (compute-S)
+         (compute-Z R)
+         (compute-C Rd-val Rr-val R)
+         (when debug?
+           (print-instruction-uniquely OUT 'SUB)
+           (fprintf OUT "SUB R~a[~a],R~a[~a] ; ~a" 
+                               Rd (num->hex Rd-val) 
+                               Rr (num->hex Rr-val)
+                               (num->hex R)))
+         (set! clock-cycles 1)
+         ]
+
         [(= hb0 #b0101)  ;;;;;;;;;;;;;;;;;;;; SUBI
          (define Rd (ior #b10000 hb2))
          (define Rd-val (sram-get-byte Rd))
@@ -1082,7 +1149,7 @@
          (io-clear-bit A b)
          (when debug?
            (print-instruction-uniquely OUT 'CBI)
-           (fprintf OUT "CBI A[~a],b[~a] ; " (num->hex A) b))
+           (fprintf OUT "CBI A[~a],b[~a]" (num->hex A) b))
          (set! clock-cycles 2)
          ]
         [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; SBI
@@ -1484,10 +1551,83 @@
              (sr-set-C) (sr-clear-C))
             (when debug?
               (print-instruction-uniquely OUT 'SBC)
-              (fprintf OUT "SBC R~a,R~a,C[~a] ; ~a"
-                                 Rd (num->hex Rd-val) Rr (num->hex Rr-val) C (num->hex R)))
+              (fprintf OUT "SBC R~a[~a],R~a[~a],C[~a] ; ~a"
+                                 Rd (num->hex Rd-val) 
+                                 Rr (num->hex Rr-val) C 
+                                 (num->hex R)))
          (set! clock-cycles 1)]
-        
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; SWAP
+              (= (& hb1 #b1110) #b0100)
+              (= hb3 #b0010))
+         (define Rd (ior (&<< hb1 #b0001 4) hb2))
+         (define Rd-val (sram-get-byte Rd))
+         (define R (ior (&<< Rd-val #x0f 4)
+                        (&<< Rd-val #xf0 -4)))
+         (sram-set-byte Rd R)
+         (when debug?
+              (print-instruction-uniquely OUT 'SWAP)
+              (fprintf OUT "SWAP R~a[~a] ; ~a"
+                                 Rd (num->hex Rd-val) (num->hex R)))
+         (set! clock-cycles 1)]
+        [(and (= hb0 #b1001) ;;;;;;;;;;;;;;;;;;;; MUL
+              (= (& hb1 #b1100) #b1100))
+         (define Rd (get-Rd opcode))
+         (define Rr (get-Rr opcode))
+         (define Rd-val (sram-get-byte Rd))
+         (define Rr-val (sram-get-byte Rr))
+         (define R (* Rd-val Rr-val))
+         ;; save the result in R1:R0
+         (sram-set-byte 0 (& R #xff))
+         (sram-set-byte 1 (<<& R -8 #xff))
+         (compute-Z R)
+         (if (! R 15) (sr-set-C) (sr-clear-C))
+         (when debug?
+           (print-instruction-uniquely OUT 'MUL)
+           (fprintf OUT "MUL R~a[~a],R~a[~a] ; ~a"
+                                 Rd (num->hex Rd-val) 
+                                 Rr (num->hex Rr-val) 
+                                 (num->hex R)))
+         (set! clock-cycles 2)
+         ]
+        [(and (= hb0 #b0111)) ;;;;;;;;;;;;;;;;;;;; ANDI
+         (define Rd (+ hb2 16)) ;; registers 16...31
+         (define Rd-val (sram-get-byte Rd))
+         (define K (ior (<< hb1 4) hb3))
+         (define R (& Rd-val K))
+         (sram-set-byte Rd R)
+         (sr-clear-V)
+         (compute-N R)
+         (compute-S)
+         (compute-Z R)
+         (when debug?
+           (print-instruction-uniquely OUT 'ANDI)
+           (fprintf OUT "ANDI R~a[~a],K[~a] ; ~a"
+                                 Rd (num->hex Rd-val) 
+                                 (num->hex K)
+                                 (num->hex R)))
+         (set! clock-cycles 1)
+         ]
+        [(and (= hb0 #b1001)  ;;;;;;;;;;;;;;;;;;;; NEG
+              (= (& hb1 #b1110) #b0100)
+              (= hb3 #b0001))
+         (define Rd (get-Rd opcode))
+         (define Rd-val (sram-get-byte Rd))
+         (define R (& (- Rd-val) #xff))
+         (sram-set-byte Rd R)
+         (if (one? (ior (bit-ref R 3) 
+                        (n-bit-ref Rd-val 3)))
+             (sr-set-H) (sr-clear-H))
+         (if (= R #x80) (sr-set-V)(sr-clear-V))
+         (compute-N R)
+         (compute-S)
+         (compute-Z R)
+         (if (zero? R) (sr-clear-C)(sr-set-C))
+         (when debug?
+           (print-instruction-uniquely OUT 'NEG)
+           (fprintf OUT "NEG R~a[~a] ; ~a"
+                                 Rd (num->hex Rd-val) 
+                                 (num->hex R)))
+         (set! clock-cycles 1)]
         [(zero? opcode)  ;;;;;;;;;;;;;;;;;;;; NOP
          (when debug?
            (print-instruction-uniquely OUT 'NOP)
