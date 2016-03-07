@@ -427,6 +427,294 @@
 
 (define debug? #f)
 
+
+;; 2 bit register id (R24 R26 R28 R30)
+(define mask-Rd-2 #x0030)
+;; 3 bit register id (R16 - R23)
+(define mask-Rd-3 #x0070)
+;; 4 bit register id (R16 - R31)
+(define mask-Rd-4 #x00f0)
+;; 5 bit register id (R00 - R31)
+(define mask-Rd-5 #x01f0)
+;; 3 bit register id (R16 - R23)
+(define mask-Rr-3 #x0007)
+;; 4 bit register id (R16 - R31)
+(define mask-Rr-4 #x000f)
+;; 5 bit register id (R00 - R31)
+(define mask-Rr-5 #x020f)
+;; for 8 bit constant
+(define mask-K-8 #x0F0F)
+;; for 6 bit constant
+(define mask-K-6 #x00CF)
+;; for 7 bit relative address
+(define mask-k-7 #x03F8)
+;; for 12 bit relative address
+(define mask-k-12 #x0FFF)
+;; for 22 bit absolute address
+(define mask-k-22 #x01F1)
+;; register bit select
+(define mask-reg-bit #x0007)
+;; status register bit select
+(define mask-sreg-bit #x0070)
+;; address displacement (q)
+(define mask-q-displ #x2C07)
+;; 5 bit register id (R00 - R31)
+(define mask-A-5 #x00F8)
+;; 6 bit IO port id
+(define mask-A-6 #x060F)
+
+
+(define (opcode-info-32-bit? opcode-info)
+  (list-ref opcode-info 3))
+
+;; opcode, name, proc, nof-cycles, 32-bit?
+(define opcodes-no-operands
+  (make-hash
+   (list
+    ;; opcodes with no operands
+    (list #x9598 'BREAK  'avr-break  2 #f)
+    (list #x9519 'EICALL 'avr-eicall 2 #f)
+    (list #x9419 'EIJMP  'avr-eijmp  2 #f)
+    (list #x95D8 'ELPM   'avr-elpm   2 #f)
+    (list #x95F8 'ESPM   'avr-espm   2 #f)
+    (list #x9509 'ICALL  'avr-icall  2 #f)
+    (list #x9409 'IJMP   'avr-ijmp   2 #f)
+    (list #x95C8 'LPM    'avr-lpm    2 #f)
+    (list #x0000 'NOP    'avr-nop    2 #f)
+    (list #x9508 'RET    'avr-ret    2 #f)
+    (list #x9518 'RETI   'avr-reti   2 #f)
+    (list #x9588 'SLEEP  'avr-sleep  2 #f)
+    (list #x95E8 'SPM    'avr-spm    2 #f)
+    (list #x95A8 'WDR    'avr-wdr    2 #f))))
+;; opcodes with two 5-bit registers Rd and Rr
+(define opcodes-5-bit-Rd-Rr
+  (make-hash
+   (list
+    (list #x1C00 'ADC 'avr-ADC 2 #f)
+    (list #x0C00 'ADD 'avr-ADD 2 #f)
+    (list #x2000 'AND 'avr-AND 2 #f)
+    (list #x1400 'CP 'avr-CP 2 #f)
+    (list #x0400 'CPC 'avr-CPC 2 #f)
+    (list #x1000 'CPSE 'avr-CPSE 2 #f)
+    (list #x2400 'EOR 'avr-EOR 2 #f)
+    (list #x2C00 'MOV 'avr-MOV 2 #f)
+    (list #x9C00 'MUL 'avr-MUL 2 #f)
+    (list #x2800 'OR 'avr-OR 2 #f)
+    (list #x0800 'SBC 'avr-SBC 2 #f)
+    (list #x1800 'SUB 'avr-SUB 2 #f))))
+;; opcode with a single register Rd as operand
+(define opcodes-Rd
+  (make-hash
+   (list
+    (list #x9405 'ASR 'avr-ASR 2 #f)
+    (list #x9400 'COM 'avr-COM 2 #f)
+    (list #x940A 'DEC 'avr-DEC 2 #f)
+    (list #x9006 'ELPM-Z 'avr-ELPM-Z 2 #f)
+    (list #x9007 'ELPM-Z-incr 'avr-ELPM-Z-incr 2 #f)
+    (list #x9403 'INC 'avr-INC 2 #f)
+    (list #x9000 'LDS 'avr-LDS 2 #t)
+    (list #x900C 'LD-X 'avr-LD-X 2 #f)
+    (list #x900E 'LD-X-decr 'avr-LD-X-decr 2 #f)
+    (list #x900D 'LD-X-incr 'avr-LD-X-incr 2 #f)
+    (list #x900A 'LD-Y-decr 'avr-LD-Y-decr 2 #f)
+    (list #x9009 'LD-Y-incr 'avr-LD-Y-incr 2 #f)
+    (list #x9002 'LD-Z-decr 'avr-LD-Z-decr 2 #f)
+    (list #x9001 'LD-Z-incr 'avr-LD-Z-incr 2 #f)
+    (list #x9004 'LPM-Z 'avr-LPM-Z 2 #f)
+    (list #x9005 'LPM-Z-incr 'avr-LPM-Z-incr 2 #f)
+    (list #x9406 'LSR 'avr-LSR 2 #f)
+    (list #x9401 'NEG 'avr-NEG 2 #f)
+    (list #x900F 'POP 'avr-POP 2 #f)
+    (list #x920F 'PUSH 'avr-PUSH 2 #f)
+    (list #x9407 'ROR 'avr-ROR 2 #f)
+    (list #x9200 'STS 'avr-STS 2 #t)
+    (list #x920C 'ST-X 'avr-ST-X 2 #f)
+    (list #x920E 'ST-X-decr 'avr-ST-X-decr 2 #f)
+    (list #x920D 'ST-X-incr 'avr-ST-X-incr 2 #f)
+    (list #x920A 'ST-Y-decr 'avr-ST-Y-decr 2 #f)
+    (list #x9209 'ST-Y-incr 'avr-ST-Y-incr 2 #f)
+    (list #x9202 'ST-Z-decr 'avr-ST-Z-decr 2 #f)
+    (list #x9201 'ST-Z-incr 'avr-ST-Z-incr 2 #f)
+    (list #x9402 'SWAP 'avr-SWAP 2 #f))))
+;; opcodes with a register Rd and a constant data K
+(define opcodes-Rd-K
+  (make-hash
+   (list
+    (list #x7000 'ANDI 'avr-ANDI 2 #f)
+    (list #x3000 'CPI 'avr-CPI 2 #f)
+    (list #xE000 'LDI 'avr-LDI 2 #f)
+    (list #x6000 'ORI 'avr-ORI 2 #f)
+    (list #x4000 'SBCI 'avr-SBCI 2 #f)
+    (list #x5000 'SUBI 'avr-SUBI 2 #f)
+    (list #xF800 'BLD 'avr-BLD 2 #f))))
+;; opcodes with a register Rd and a register bit number b
+(define opcodes-Rd-b
+  (make-hash
+   (list
+    (list #xFA00 'BST 'avr-BST 2 #f)
+    (list #xFC00 'SBRC 'avr-SBRC 2 #f)
+    (list #xFE00 'SBRS 'avr-SBRS 2 #f))))
+;; opcodes with a relative 7-bit address k and a register bit number b
+(define opcodes-7-bit-k-b
+  (make-hash
+   (list
+    (list #xF400 'BRBC 'avr-BRBC 2 #f)
+    (list #xF000 'BRBS 'avr-BRBS 2 #f))))
+;; opcodes with a 6-bit address displacement q and a register Rd
+(define opcodes-6-bit-q-Rd
+  (make-hash
+   (list
+    (list #x8008 'LDD-Y 'avr-LDD-Y 2 #f)
+    (list #x8000 'LDD-Z 'avr-LDD-Z 2 #f)
+    (list #x8208 'STD-Y 'avr-STD-Y 2 #f)
+    (list #x8200 'STD-Z 'avr-STD-Z 2 #f))))
+;; opcodes with a absolute 22-bit address k
+(define opcodes-22-bit-k
+  (make-hash
+   (list
+    (list #x940E 'CALL 'avr-CALL 2 #t)
+    (list #x940C 'JMP 'avr-JMP 3 #t))))
+;; opcode with a sreg bit select s operand
+(define opcodes-s
+  (make-hash
+   (list
+    (list #x9488 'BCLR 'avr-BCLR 2 #f)
+    (list #x9408 'BSET 'avr-BSET 2 #f))))
+;; opcodes with a 6-bit constant K and a register Rd
+(define opcodes-6-bit-K-Rd
+  (make-hash
+   (list
+    (list #x9600 'ADIW 'avr-ADIW 2 #f)
+    (list #x9700 'SBIW 'avr-SBIW 2 #f))))
+;; opcodes with a 5-bit IO Addr A and register bit number b
+(define opcodes-5-bit-A-b
+  (make-hash
+   (list
+    (list #x9800 'CBI 'avr-CBI 2 #f)
+    (list #x9A00 'SBI 'avr-SBI 2 #f)
+    (list #x9900 'SBIC 'avr-SBIC 2 #f)
+    (list #x9B00 'SBIS 'avr-SBIS 2 #f))))
+;; opcodes with a 6-bit IO Addr A and register Rd
+(define opcodes-6-bit-A-Rd
+  (make-hash
+   (list
+    (list #xB000 'IN 'avr-IN 2 #f)
+    (list #xB800 'OUT 'avr-OUT 2 #f))))
+;; opcodes with a relative 12-bit address k
+(define opcodes-12-bit-k
+  (make-hash
+   (list
+    (list #xD000 'RCALL 'avr-RCALL 2 #f)
+    (list #xC000 'RJMP 'avr-RJMP 2 #f))))
+;; opcodes with two 4-bit register Rd and Rr
+(define opcodes-4-bit-Rd-Rr
+  (make-hash
+   (list
+    (list #x0100 'MOVW 'avr-MOVW 2 #f)
+    (list #x0200 'MULS 'avr-MULS 2 #f))))
+;; opcodes with two 3-bit register Rd and Rr
+(define opcodes-3-bit-Rd-Rr
+  (make-hash
+   (list
+    (list #x0300 'MULSU 'avr-MULSU 2 #f)
+    (list #x0308 'FMUL 'avr-FMUL 2 #f)
+    (list #x0380 'FMULS 'avr-FMULS 2 #f)
+    (list #x0388 'FMULSU 'avr-FMULSU 2 #f))))
+
+(define (lookup-opcode a-hash opcode)
+  (hash-ref a-hash opcode #f))
+
+(define (get-arg opcode mask (bit-length 16))
+  (define mask-opcode (& opcode mask))
+  (define target-i 0)
+  (define result 0)
+  (for ([i (min (integer-length mask-opcode))])
+    (when (bitwise-bit-set? mask i)
+      (when (bitwise-bit-set? opcode i)
+        (set! result (ior result (<< 1 target-i))))
+      (set! target-i (+ target-i 1))))
+  result)
+
+
+(define tables-and-masks
+  (list
+   (list opcodes-no-operands 0)
+   (list opcodes-5-bit-Rd-Rr mask-Rd-5 mask-Rr-5)
+   (list opcodes-Rd mask-Rd-5)
+   (list opcodes-Rd-K mask-Rd-4 mask-K-8)
+   (list opcodes-Rd-b mask-Rd-5 mask-reg-bit)
+   (list opcodes-7-bit-k-b mask-k-7 mask-reg-bit)
+   (list opcodes-6-bit-q-Rd mask-Rd-5 mask-q-displ)
+   (list opcodes-22-bit-k mask-k-22)
+   (list opcodes-s mask-sreg-bit)
+   (list opcodes-6-bit-K-Rd mask-K-6 mask-Rd-2)
+   (list opcodes-5-bit-A-b mask-A-5 mask-reg-bit)
+   (list opcodes-6-bit-A-Rd mask-A-6 mask-Rd-5)
+   (list opcodes-12-bit-k mask-k-12)
+   (list opcodes-4-bit-Rd-Rr mask-Rd-4 mask-Rr-4)
+   (list opcodes-3-bit-Rd-Rr mask-Rd-3 mask-Rr-3)))
+
+(define (get-masks tables-and-masks-entry)
+  (cdr tables-and-masks-entry))
+
+(define (get-table tables-and-masks-entry)
+  (car tables-and-masks-entry))
+
+(define (get-args opcode masks)
+  (map (lambda (mask) (get-arg opcode mask)) masks))
+
+
+;; (if (opcode-info-32-bit? opcode-info)
+;;     (append opcode-info (cons args (list opcode-next))))
+
+
+(define (decode opcode opcode-next)
+  (let loop ([tables-and-masks tables-and-masks])
+    (define mapping (car tables-and-masks))
+    (define masks (get-masks mapping))
+    (define table (get-table mapping))
+    (define mask (bitwise-not (apply ior masks)))
+    (define opcode-info (lookup-opcode (get-table mapping)
+                                       (& opcode mask)))
+    (define args (get-args opcode masks))
+    (if opcode-info
+        (append opcode-info args)
+        (loop (cdr tables-and-masks)))))
+
+;; tests
+(check eq? 'BREAK (car (decode #x9598 #x0000)))
+(check eq? 'EICALL (car (decode #x9519 #x0000)))
+(check eq? 'EIJMP (car (decode #x9419 #x0000)))
+(check eq? 'ELPM (car (decode #x95D8 #x0000)))
+(check eq? 'ESPM (car (decode #x95F8 #x0000)))
+(check eq? 'ICALL (car (decode #x9509 #x0000)))
+(check eq? 'IJMP (car (decode #x9409 #x0000)))
+(check eq? 'LPM (car (decode #x95C8 #x0000)))
+(check eq? 'NOP (car (decode #x0000 #x0000)))
+(check eq? 'RET (car (decode #x9508 #x0000)))
+(check eq? 'RETI (car (decode #x9518 #x0000)))
+(check eq? 'SLEEP (car (decode #x9588 #x0000)))
+(check eq? 'SPM (car (decode #x95E8 #x0000)))
+(check eq? 'WDR (car (decode #x95A8 #x0000)))
+
+(check eq? 'ADC (car (decode #x1C15 #x0000)))
+(check eq? 'ADD (car (decode #x0C12 #x0000)))
+(check eq? 'AND (car (decode #x2055 #x0000)))
+(check eq? 'CP (car (decode #x1455 #x0000)))
+(check eq? 'CPSE (car (decode #x1055 #x0000)))
+(check eq? 'EOR (car (decode #x24ff #x0000)))
+
+(check eq? 'ASR (car (decode #x9495 #x0000)))
+(check eq? 'COM (car (decode #x94f0 #x0000)))
+(check eq? 'ST-X (car (decode #x92fC #x0000)))
+(check eq? 'ROR (car (decode #x94f7 #x0000)))
+
+(check eq? 'ANDI (car (decode #x7fff #x0000)))
+(check eq? 'CPI (car (decode #x3fff #x0000)))
+(check eq? 'CALL (car (decode #x95ff #x0000)))
+
+
+
 (define (fetch-and-decode)
   ;; fetch
   (define opcode (next-instruction))
