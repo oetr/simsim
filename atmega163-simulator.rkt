@@ -117,6 +117,7 @@
 ;; 8Kx16 bits program memory, self-programmable
 (define FLASHEND #x1fff)
 (define FLASH (make-vector FLASHEND))
+(define (flash-length) FLASHEND)
 ;; get and set word use word addresses
 (define (flash-get-word addr) (vector-ref FLASH addr))
 (define (flash-set-word addr val) (vector-set! FLASH addr val))
@@ -463,29 +464,79 @@
 ;; 6 bit IO port id
 (define mask-A-6 #x060F)
 
+(define (make-opcode-info opcode name proc cycles 32-bit? args)
+  (list opcode name proc cycles 32-bit? args))
+
+(define (opcode-info-opcode opcode-info)
+  (list-ref opcode-info 0))
+
+(define (opcode-info-name opcode-info)
+  (list-ref opcode-info 1))
+
+(define (opcode-info-proc opcode-info)
+  (list-ref opcode-info 2))
+
+(define (opcode-info-cycles opcode-info)
+  (list-ref opcode-info 3))
 
 (define (opcode-info-32-bit? opcode-info)
-  (list-ref opcode-info 3))
+  (list-ref opcode-info 4))
+
+(define (opcode-info-args opcode-info)
+  (list-ref opcode-info 5))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 16-bit instructions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (avr-NOP . args) avr-NOP)
+
+  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 32-bit instructions
+;; either get the second half, when saving
+;; or execute, when second arg is empty
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (avr-CALL-get-args kh kl)
+  (printf "~a, ~a~n" kh kl)
+  (list avr-CALL (list (ior (<< kh 16) kl))))
+(define (avr-CALL k)
+  (cons avr-CALL k))
+
+(define (avr-JMP-get-args kh kl)
+  (list avr-JMP (list (+ (<< kh 16) kl))))
+(define (avr-JMP k)
+  (cons avr-JMP k))
+
+(define (avr-LDS-get-args Rd k)
+  (list avr-LDS (list Rd k)))
+(define (avr-LDS Rd k)
+  (list avr-LDS Rd k))
+
+(define (avr-STS-get-args Rr k)
+  (list avr-STS (list Rr k)))
+(define (avr-STS Rr k)
+  (list avr-STS Rr k))
 
 ;; opcode, name, proc, nof-cycles, 32-bit?
 (define opcodes-no-operands
   (make-hash
    (list
     ;; opcodes with no operands
-    (list #x9598 'BREAK  'avr-break  2 #f)
-    (list #x9519 'EICALL 'avr-eicall 2 #f)
-    (list #x9419 'EIJMP  'avr-eijmp  2 #f)
-    (list #x95D8 'ELPM   'avr-elpm   2 #f)
-    (list #x95F8 'ESPM   'avr-espm   2 #f)
-    (list #x9509 'ICALL  'avr-icall  2 #f)
-    (list #x9409 'IJMP   'avr-ijmp   2 #f)
-    (list #x95C8 'LPM    'avr-lpm    2 #f)
-    (list #x0000 'NOP    'avr-nop    2 #f)
-    (list #x9508 'RET    'avr-ret    2 #f)
-    (list #x9518 'RETI   'avr-reti   2 #f)
-    (list #x9588 'SLEEP  'avr-sleep  2 #f)
-    (list #x95E8 'SPM    'avr-spm    2 #f)
-    (list #x95A8 'WDR    'avr-wdr    2 #f))))
+    (list #x9598 'BREAK  'avr-BREAK  2 #f)
+    (list #x9519 'EICALL 'avr-EICALL 2 #f)
+    (list #x9419 'EIJMP  'avr-EIJMP  2 #f)
+    (list #x95D8 'ELPM   'avr-ELPM   2 #f)
+    (list #x95F8 'ESPM   'avr-ESPM   2 #f)
+    (list #x9509 'ICALL  'avr-ICALL  2 #f)
+    (list #x9409 'IJMP   'avr-IJMP   2 #f)
+    (list #x95C8 'LPM    'avr-LPM    2 #f)
+    (list #x0000 'NOP    avr-NOP     2 #f)
+    (list #x9508 'RET    'avr-RET    2 #f)
+    (list #x9518 'RETI   'avr-RETI   2 #f)
+    (list #x9588 'SLEEP  'avr-SLEEP  2 #f)
+    (list #x95E8 'SPM    'avr-SPM    2 #f)
+    (list #x95A8 'WDR    'avr-WDR    2 #f))))
 ;; opcodes with two 5-bit registers Rd and Rr
 (define opcodes-5-bit-Rd-Rr
   (make-hash
@@ -512,7 +563,7 @@
     (list #x9006 'ELPM-Z 'avr-ELPM-Z 2 #f)
     (list #x9007 'ELPM-Z-incr 'avr-ELPM-Z-incr 2 #f)
     (list #x9403 'INC 'avr-INC 2 #f)
-    (list #x9000 'LDS 'avr-LDS 2 #t)
+    (list #x9000 'LDS avr-LDS-get-args 2 #t)
     (list #x900C 'LD-X 'avr-LD-X 2 #f)
     (list #x900E 'LD-X-decr 'avr-LD-X-decr 2 #f)
     (list #x900D 'LD-X-incr 'avr-LD-X-incr 2 #f)
@@ -527,7 +578,7 @@
     (list #x900F 'POP 'avr-POP 2 #f)
     (list #x920F 'PUSH 'avr-PUSH 2 #f)
     (list #x9407 'ROR 'avr-ROR 2 #f)
-    (list #x9200 'STS 'avr-STS 2 #t)
+    (list #x9200 'STS avr-STS-get-args 2 #t)
     (list #x920C 'ST-X 'avr-ST-X 2 #f)
     (list #x920E 'ST-X-decr 'avr-ST-X-decr 2 #f)
     (list #x920D 'ST-X-incr 'avr-ST-X-incr 2 #f)
@@ -572,8 +623,8 @@
 (define opcodes-22-bit-k
   (make-hash
    (list
-    (list #x940E 'CALL 'avr-CALL 2 #t)
-    (list #x940C 'JMP 'avr-JMP 3 #t))))
+    (list #x940E 'CALL avr-CALL-get-args 2 #t)
+    (list #x940C 'JMP avr-JMP-get-args 3 #t))))
 ;; opcode with a sreg bit select s operand
 (define opcodes-s
   (make-hash
@@ -663,55 +714,111 @@
 (define (get-args opcode masks)
   (map (lambda (mask) (get-arg opcode mask)) masks))
 
-
-;; (if (opcode-info-32-bit? opcode-info)
-;;     (append opcode-info (cons args (list opcode-next))))
-
-
-(define (decode opcode opcode-next)
+(define (decode opcode)
   (let loop ([tables-and-masks tables-and-masks])
-    (define mapping (car tables-and-masks))
-    (define masks (get-masks mapping))
-    (define table (get-table mapping))
-    (define mask (bitwise-not (apply ior masks)))
-    (define opcode-info (lookup-opcode (get-table mapping)
-                                       (& opcode mask)))
-    (define args (get-args opcode masks))
-    (if opcode-info
-        (append opcode-info args)
-        (loop (cdr tables-and-masks)))))
+    (if (empty? tables-and-masks)
+        #f
+        (let ([mapping (car tables-and-masks)])
+          (define masks (get-masks mapping))
+          (define table (get-table mapping))
+          (define mask (bitwise-not (apply ior masks)))
+          (define opcode-info (lookup-opcode (get-table mapping)
+                                             (& opcode mask)))
+          (define args (get-args opcode masks))
+          (if opcode-info
+              (append (cons opcode opcode-info) (list args))
+              (loop (cdr tables-and-masks)))))))
+
+(define (flash->procedures flash)
+  (define procedures (make-vector FLASHEND 0))
+  (define was-32-bit? #f)
+  (let loop ([addr 0])
+    (unless (>= addr FLASHEND)
+      (define opcode-info (decode (flash-get-word addr)))
+      (vector-set! procedures addr #f)
+      (if (and (not was-32-bit?) opcode-info)
+          (let ([opcode (opcode-info-opcode opcode-info)]
+                [name (opcode-info-name opcode-info)]
+                [proc (opcode-info-proc opcode-info)]
+                [cycles (opcode-info-cycles opcode-info)]
+                [32-bit? (opcode-info-32-bit? opcode-info)]
+                [args (opcode-info-args opcode-info)])
+            (when (opcode-info-32-bit? opcode-info)
+              (let ([next-word (flash-get-word (+ addr 1))])
+                (set! was-32-bit? #t)
+                (set! opcode (+ (<< opcode 16) next-word))
+                (define proc-args 
+                  (apply proc (append args (list next-word))))
+                (set! proc (car proc-args))
+                (set! args (cadr proc-args))))
+            (define result
+              (make-opcode-info opcode name 
+                                proc cycles 32-bit? args))
+            (vector-set! procedures addr result))
+          (set! was-32-bit? #f))
+      (loop (+ addr 1))))
+  procedures)
+
+(define all-procs (flash->procedures FLASH))
+
+(define (print-flash-procedures procs)
+  (for ([opcode-info procs]
+        [i (vector-length procs)])
+    (when opcode-info
+      (define opcode  (opcode-info-opcode  opcode-info))
+      (define name    (opcode-info-name    opcode-info))
+      (define proc    (opcode-info-proc    opcode-info))
+      (define cycles  (opcode-info-cycles  opcode-info))
+      (define 32-bit? (opcode-info-32-bit? opcode-info))
+      (define args    (opcode-info-args    opcode-info))
+      (printf "~a: ~a ~a ~a ~a ~a ~a~n" 
+              (num->hex i) 
+              (num->hex opcode)
+              name proc cycles 32-bit?
+              (map num->hex args)))
+    (unless opcode-info
+      (printf "~a: #f~n" i))))
+
+(print-flash-procedures all-procs)
+      
+
+
+(define hex-file "./tests/main.hex")
+(reset-machine)
+(hex->flash! hex-file)
+
 
 ;; tests
-(check eq? 'BREAK (car (decode #x9598 #x0000)))
-(check eq? 'EICALL (car (decode #x9519 #x0000)))
-(check eq? 'EIJMP (car (decode #x9419 #x0000)))
-(check eq? 'ELPM (car (decode #x95D8 #x0000)))
-(check eq? 'ESPM (car (decode #x95F8 #x0000)))
-(check eq? 'ICALL (car (decode #x9509 #x0000)))
-(check eq? 'IJMP (car (decode #x9409 #x0000)))
-(check eq? 'LPM (car (decode #x95C8 #x0000)))
-(check eq? 'NOP (car (decode #x0000 #x0000)))
-(check eq? 'RET (car (decode #x9508 #x0000)))
-(check eq? 'RETI (car (decode #x9518 #x0000)))
-(check eq? 'SLEEP (car (decode #x9588 #x0000)))
-(check eq? 'SPM (car (decode #x95E8 #x0000)))
-(check eq? 'WDR (car (decode #x95A8 #x0000)))
+(check eq? 'BREAK (car (decode #x9598)))
+(check eq? 'EICALL (car (decode #x9519)))
+(check eq? 'EIJMP (car (decode #x9419)))
+(check eq? 'ELPM (car (decode #x95D8)))
+(check eq? 'ESPM (car (decode #x95F8)))
+(check eq? 'ICALL (car (decode #x9509)))
+(check eq? 'IJMP (car (decode #x9409)))
+(check eq? 'LPM (car (decode #x95C8)))
+(check eq? 'NOP (car (decode #x0000)))
+(check eq? 'RET (car (decode #x9508)))
+(check eq? 'RETI (car (decode #x9518)))
+(check eq? 'SLEEP (car (decode #x9588)))
+(check eq? 'SPM (car (decode #x95E8)))
+(check eq? 'WDR (car (decode #x95A8)))
 
-(check eq? 'ADC (car (decode #x1C15 #x0000)))
-(check eq? 'ADD (car (decode #x0C12 #x0000)))
-(check eq? 'AND (car (decode #x2055 #x0000)))
-(check eq? 'CP (car (decode #x1455 #x0000)))
-(check eq? 'CPSE (car (decode #x1055 #x0000)))
-(check eq? 'EOR (car (decode #x24ff #x0000)))
+(check eq? 'ADC (car (decode #x1C15)))
+(check eq? 'ADD (car (decode #x0C12)))
+(check eq? 'AND (car (decode #x2055)))
+(check eq? 'CP (car (decode #x1455)))
+(check eq? 'CPSE (car (decode #x1055)))
+(check eq? 'EOR (car (decode #x24ff)))
 
-(check eq? 'ASR (car (decode #x9495 #x0000)))
-(check eq? 'COM (car (decode #x94f0 #x0000)))
-(check eq? 'ST-X (car (decode #x92fC #x0000)))
-(check eq? 'ROR (car (decode #x94f7 #x0000)))
+(check eq? 'ASR (car (decode #x9495)))
+(check eq? 'COM (car (decode #x94f0)))
+(check eq? 'ST-X (car (decode #x92fC)))
+(check eq? 'ROR (car (decode #x94f7)))
 
-(check eq? 'ANDI (car (decode #x7fff #x0000)))
-(check eq? 'CPI (car (decode #x3fff #x0000)))
-(check eq? 'CALL (car (decode #x95ff #x0000)))
+(check eq? 'ANDI (car (decode #x7fff)))
+(check eq? 'CPI (car (decode #x3fff)))
+(check eq? 'CALL (car (decode #x95ff)))
 
 
 
