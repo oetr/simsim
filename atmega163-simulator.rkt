@@ -1,5 +1,5 @@
 (require racket racket/main rackunit)
-;;(require "instruction-table.rkt")
+;;(load "instruction-table.rkt")
 ;; Develop an abstract machine that is loaded with a hex /elf file,
 ;; is given a start address, and can simulate the execution
 
@@ -261,6 +261,7 @@
 (define SR-ADDR #x5f)
 ;; Status register: GET
 (define (sr-get)   (sram-get-byte SR-ADDR))
+(define (sr-get-bit b) (sram-get-bit SR-ADDR b))
 (define (sr-get-I) (sram-get-bit SR-ADDR 7))
 (define (sr-get-T) (sram-get-bit SR-ADDR 6))
 (define (sr-get-H) (sram-get-bit SR-ADDR 5))
@@ -270,6 +271,7 @@
 (define (sr-get-Z) (sram-get-bit SR-ADDR 1))
 (define (sr-get-C) (sram-get-bit SR-ADDR 0))
 ;; Status register: SET
+(define (sr-set-bit b) (sram-set-bit SR-ADDR b))
 (define (sr-set-I) (sram-set-bit SR-ADDR 7))
 (define (sr-set-T) (sram-set-bit SR-ADDR 6))
 (define (sr-set-H) (sram-set-bit SR-ADDR 5))
@@ -279,6 +281,7 @@
 (define (sr-set-Z) (sram-set-bit SR-ADDR 1))
 (define (sr-set-C) (sram-set-bit SR-ADDR 0))
 ;; Status register: CLEAR
+(define (sr-clear-bit b) (sram-clear-bit SR-ADDR b))
 (define (sr-clear-I) (sram-clear-bit SR-ADDR 7))
 (define (sr-clear-T) (sram-clear-bit SR-ADDR 6))
 (define (sr-clear-H) (sram-clear-bit SR-ADDR 5))
@@ -1654,11 +1657,11 @@
   )
 
 (define (go-address address)
-  (fetch-and-decode)
+  (run)
   (let loop ()
     (if (= PC address)
-        (fetch-and-decode)
-        (begin (fetch-and-decode)
+        (run)
+        (begin (run)
                (loop)))))
 
 (define (print-registers)

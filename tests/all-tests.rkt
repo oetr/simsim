@@ -3,10 +3,12 @@
 
 ;; TODO: use load for now, change later to "require"
 (load "../atmega163-simulator.rkt")
+(load "../instruction-table.rkt")
+(load "../procedures.rkt")
 
 ;; Helper procedures
 (define (step-and-compare-reg-content test-label reg val (n-instr 1))
-  (for ([i n-instr]) (fetch-and-decode))
+  (run n-instr)
   (check-equal? (sram-get-byte reg) val test-label))
 
 ;; reset the machine, load everything, 
@@ -20,6 +22,7 @@
   (set! debug? #f)
   (reset-machine)
   (hex->flash! hex-file)
+  (flash->procedures!)
   (set! PC (lookup-symbol "main"))
   (go-address (lookup-symbol "init"))
   (set! PC (lookup-symbol label)))
@@ -50,16 +53,14 @@
 (for ([reg 30])
   (prepare-machine (string-append "startTestLPMR" 
                                   (number->string reg)))
-  (fetch-and-decode)
-  (fetch-and-decode)
+  (run 2)
   (for ([i 256])
     (step-and-compare-reg-content
      (string-append "LPM-" (number->string reg) 
                     "-sbox-" (number->string i))
      reg
      (vector-ref sbox i))
-    (fetch-and-decode)
-    (fetch-and-decode)))
+    (run 2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; LPM RXX,Z+ for registers R0-R29
@@ -67,23 +68,21 @@
 (for ([reg 30])
   (prepare-machine (string-append "startTestLPMZplusR" 
                                   (number->string reg)))
-  (fetch-and-decode)
-  (fetch-and-decode)
+  (run 2)
   (for ([i 256])
     (step-and-compare-reg-content
      (string-append "LPM-Z+-" (number->string reg) 
                     "-sbox-" (number->string i))
      reg
      (vector-ref sbox i))
-    (fetch-and-decode)))
+    (run)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ST X,Rr
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (prepare-machine "startTestSTXRr")
 (set! debug? #f)
-(fetch-and-decode)
-(fetch-and-decode)
+(run 2)
 (for ([i 256])
   (step-and-compare-reg-content "startTestSTXRr" (+ #x60 i) 
                                 (vector-ref sbox i) 4))
