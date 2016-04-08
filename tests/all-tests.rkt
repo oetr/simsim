@@ -19,7 +19,7 @@
   (load-symbol-table symbol-file)
   ;; Load the hex file
   (define hex-file "main.hex")
-  (set! debug? #f)
+  (set! debug? #t)
   (reset-machine)
   (hex->flash! hex-file)
   (flash->procedures!)

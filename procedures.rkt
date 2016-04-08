@@ -371,6 +371,24 @@
              Rd Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
+(define (avr-MOVW Rd/2 Rr/2)
+  (define Rd (* Rd/2 2))
+  (define Rr (* Rr/2 2))
+  (define Rd+ (+ Rd 1))
+  (define Rr+ (+ Rr 1))
+  (define Rr-val (sram-get-byte Rr))
+  (sram-set-byte Rd Rr-val)
+  (define Rr+-val (sram-get-byte Rr+))
+  (sram-set-byte Rd+ Rr+-val)
+  (when debug?
+    (print-instruction-uniquely OUT 'MOVW)
+    (fprintf OUT "MOVW R~a:R~a,R~a[~a]:R~a[~a]"  
+             Rd Rd+ Rr 
+             (num->hexb Rr-val)
+             Rr+
+             (num->hexb Rr+-val)))
+  (set! clock-cycles 1))
+
 (define (avr-ORI Rd K)
   (define Rd-val (sram-get-byte Rd))
   (define R (ior Rd-val K))
@@ -471,11 +489,10 @@
   (sram-set-byte (+ y q) (sram-get-byte Rr))
   (when debug?
     (print-instruction-uniquely OUT 'STY+qRr)
-    (fprintf OUT "ST Y+~a,R~a[~a]"
-             q Rr 
+    (fprintf OUT "ST Y+~a[~a],R~a ; ~a"
+             q (num->hex y) Rr
              (num->hex (sram-get-byte Rr))))
   (set! clock-cycles 2))
-
 
 (define (avr-ST-Y-incr Rr)
   (define y (get-y))
@@ -687,7 +704,7 @@
 (define opcodes-4-bit-Rd-Rr
   (make-hash
    (list
-    (list #x0100 'MOVW 'avr-MOVW 2 #f)
+    (list #x0100 'MOVW avr-MOVW 2 #f)
     (list #x0200 'MULS 'avr-MULS 2 #f))))
 ;; opcodes with two 3-bit register Rd and Rr
 (define opcodes-3-bit-Rd-Rr
