@@ -229,7 +229,7 @@
   (define Rd-val (sram-get-byte Rd))
   (define Rr-val (sram-get-byte Rr))
   (define R (bitwise-xor Rd-val Rr-val))
-  (sram-set-byte Rd R)
+  (sram-set-byte Rd R (symbolic-append 'EOR 2))
   (sr-clear-V)
   (if (! R 7) (sr-set-N) (sr-clear-N))
   (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
@@ -279,7 +279,7 @@
 (define (avr-LDD-Y Rd q)
   (define y (get-y))
   (define val (sram-get-byte (+ y q)))
-  (sram-set-byte Rd val)
+  (sram-set-byte Rd val (symbolic-append #f 1))
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+q)
     (fprintf OUT "LD R~a,Y+~a[~a]" Rd q (num->hex val)))
@@ -288,7 +288,7 @@
 (define (avr-LD-Y-incr Rd)
   (define y (get-y))
   (define y-val (sram-get-byte y))
-  (sram-set-byte Rd y-val)
+  (sram-set-byte Rd y-val (symbolic-append #f 1))
   (inc-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+)
@@ -298,7 +298,7 @@
 (define (avr-LDD-Z Rd q)
   (define z (get-z))
   (define z-val (sram-get-byte (+ z q)))
-  (sram-set-byte Rd z-val)
+  (sram-set-byte Rd z-val (symbolic-append #f 1))
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+q)
     (fprintf OUT "LD R~a,Z+~a[~a]" Rd q (num->hex z-val)))
@@ -316,7 +316,7 @@
 
 (define (avr-LDI Rd-16 K)
   (define Rd (+ Rd-16 16))
-  (sram-set-byte Rd K)
+  (sram-set-byte Rd K K)
   (when debug?
     (print-instruction-uniquely OUT 'LDI)
     (fprintf OUT "LDI R~a,K[~a]" Rd (num->hex K)))
@@ -326,7 +326,7 @@
   (list avr-LDS (list Rd k)))
 (define (avr-LDS Rr k)
   (define k-val (sram-get-byte k))
-  (sram-set-byte Rr k-val)
+  (sram-set-byte Rr k-val (symbolic-append #f 1) #:op-print 'LDS)
   (when debug?
     (print-instruction-uniquely OUT 'LDS)
     (fprintf OUT "LDS R~a,(~a)[~a]" Rr (num->hex k) (num->hex k-val)))
@@ -334,18 +334,20 @@
   (set! clock-cycles 2))
 
 (define (avr-LPM _)
-  (define z (get-z))
+  (define z (get-z #t))
   (define z-val (flash-get-byte z))
-  (sram-set-byte 0 z-val)
+  (sram-set-byte 0 z-val (symbolic-append flash-current-symbolic 2) 
+                 #:op-print 'LPM)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
     (fprintf OUT "LPM R0,Z[~a]" (num->hex z-val)))
   (set! clock-cycles 3))
 
 (define (avr-LPM-Z Rd)
-  (define z (get-z))
+  (define z (get-z #t))
   (define z-val (flash-get-byte z))
-  (sram-set-byte Rd z-val)
+  (sram-set-byte Rd z-val (symbolic-append flash-current-symbolic 2) 
+                 #:op-print 'LPM)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
     (fprintf OUT "LPM R~a,Z[~a]" Rd (num->hex z-val)))
@@ -362,13 +364,30 @@
   (set! clock-cycles 3))
 
 (define (avr-MOV Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
   (define Rr-val (sram-get-byte Rr))
-  (sram-set-byte Rd Rr-val)
+  (sram-set-byte Rd Rr-val sram-current-symbolic #:op-print 'MOV)
   (when debug? 
     (print-instruction-uniquely OUT 'MOV)
     (fprintf OUT "MOV R~a,R~a[~a]"
              Rd Rr (num->hex Rr-val)))
+  (set! clock-cycles 1))
+
+(define (avr-MOVW Rd/2 Rr/2)
+  (define Rd (* Rd/2 2))
+  (define Rr (* Rr/2 2))
+  (define Rd+ (+ Rd 1))
+  (define Rr+ (+ Rr 1))
+  (define Rr-val (sram-get-byte Rr))
+  (sram-set-byte Rd Rr-val sram-current-symbolic #:op-print 'MOVW1)
+  (define Rr+-val (sram-get-byte Rr+))
+  (sram-set-byte Rd+ Rr+-val sram-current-symbolic #:op-print 'MOVW2)
+  (when debug?
+    (print-instruction-uniquely OUT 'MOVW)
+    (fprintf OUT "MOVW R~a:R~a,R~a[~a]:R~a[~a]"  
+             Rd Rd+ Rr 
+             (num->hexb Rr-val)
+             Rr+
+             (num->hexb Rr+-val)))
   (set! clock-cycles 1))
 
 (define (avr-ORI Rd K)
@@ -468,19 +487,20 @@
 
 (define (avr-STD-Y Rr q)
   (define y (get-y))
-  (sram-set-byte (+ y q) (sram-get-byte Rr))
+  (define Rr-val (sram-get-byte Rr))
+  (sram-set-byte (+ y q) Rr-val)
   (when debug?
     (print-instruction-uniquely OUT 'STY+qRr)
     (fprintf OUT "ST Y+~a,R~a[~a]"
              q Rr 
-             (num->hex (sram-get-byte Rr))))
+             (num->hex Rr-val)))
   (set! clock-cycles 2))
 
 
 (define (avr-ST-Y-incr Rr)
   (define y (get-y))
   (define Rr-val (sram-get-byte Rr))
-  (sram-set-byte y Rr-val)
+  (sram-set-byte y Rr-val (symbolic-append #f 1))
   (inc-y)
   (when debug?
     (print-instruction-uniquely OUT 'STY+Rr)
@@ -490,7 +510,8 @@
 
 (define (avr-STD-Z Rr q)
   (define z (get-z))
-  (sram-set-byte (+ z q) (sram-get-byte Rr))
+  (define Rr-val (sram-get-byte Rr))
+  (sram-set-byte (+ z q) Rr-val (symbolic-append #f 1))
   (when debug?
     (print-instruction-uniquely OUT 'STZ+qRr)
     (fprintf OUT "ST Z+~a,R~a[~a]"
@@ -498,9 +519,9 @@
   (set! clock-cycles 2))
 
 (define (avr-ST-Z-incr Rr)
-  (define z (get-z))         
+  (define z (get-z))
   (define Rr-val (sram-get-byte Rr))
-  (sram-set-byte z Rr-val)
+  (sram-set-byte z Rr-val (symbolic-append #f 1))
   (inc-z)
   (when debug?
     (print-instruction-uniquely OUT 'STZ+Rr)
@@ -515,7 +536,7 @@
   (when debug?
     (print-instruction-uniquely OUT 'STS)
     (fprintf OUT "STS (~a),R~a[~a]" (num->hex k) Rr (num->hex Rr-val)))
-  (sram-set-byte k Rr-val)
+  (sram-set-byte k Rr-val (symbolic-append #f 1) #:op-print 'STS)
   (inc-pc)
   (set! clock-cycles 2))
 
@@ -687,7 +708,7 @@
 (define opcodes-4-bit-Rd-Rr
   (make-hash
    (list
-    (list #x0100 'MOVW 'avr-MOVW 2 #f)
+    (list #x0100 'MOVW avr-MOVW 2 #f)
     (list #x0200 'MULS 'avr-MULS 2 #f))))
 ;; opcodes with two 3-bit register Rd and Rr
 (define opcodes-3-bit-Rd-Rr
@@ -794,7 +815,7 @@
   (set! PROCEDURES (flash->procedures FLASH)))
 
 (define (run (n 1))
-  (for ([i n])   
+  (for ([i n])
     (define symbol (lookup-address PC))
     (set! symbol-need-to-print? #f)
     (define instr (vector-ref PROCEDURES PC))
@@ -803,13 +824,20 @@
       (define 32-bit? (opcode-info-32-bit? instr))
       (define args    (opcode-info-args instr))
       (define proc (opcode-info-proc instr))
+      (define opcode (opcode-info-opcode instr))
+      (when debug?     
+        (fprintf OUT "~a|~a|~a|"
+                 CURRENT-CLOCK-CYCLE PC (num->hex opcode)))
       (apply proc args)
       (when debug?
         (when (and symbol symbol-need-to-print?) 
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
       (set! CURRENT-CLOCK-CYCLE
-            (+ CURRENT-CLOCK-CYCLE clock-cycles)))))
+            (+ CURRENT-CLOCK-CYCLE clock-cycles))
+      (when (>= CURRENT-CLOCK-CYCLE *symbolic-timeout*)
+        (set! get-symbolic? #f))
+      )))
 
 (define (print-flash-procedures procs)
   (for ([opcode-info procs]

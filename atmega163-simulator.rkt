@@ -116,15 +116,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 8Kx16 bits program memory, self-programmable
 (define FLASHEND #x1fff)
-(define FLASH (make-vector FLASHEND))
+(define FLASH (make-vector FLASHEND 0))
+(define FLASH-SYMBOLIC (make-vector (* FLASHEND 2) #f))
+;; symbolic execution FLASH
+(define flash-current-symbolic #f)
 (define (flash-length) FLASHEND)
 ;; get and set word use word addresses
 (define (flash-get-word addr) (vector-ref FLASH addr))
 (define (flash-set-word addr val) (vector-set! FLASH addr val))
 ;; get-byte use byte addresses
-(define (flash-get-byte addr)
+(define (flash-get-byte addr (get-symbolic? get-symbolic?))
   (define word (flash-get-word (arithmetic-shift addr -1)))
-  (if (bitwise-bit-set? addr 0)      
+  (when get-symbolic?
+    (set! flash-current-symbolic (vector-ref FLASH-SYMBOLIC addr)))
+  (if (bitwise-bit-set? addr 0)
       (arithmetic-shift word -8)
       (bitwise-and word #x00ff)))
 
@@ -149,49 +154,99 @@
     (printf "~a " (dots-when-zero byte)))
   (printf "~a~n " accumulated-bytes))
 
+;;; Symbolic execution
+(define get-symbolic? #t)
+(define *symbolic-timeout* 1000) ;; nof clock cycles when to stop
+(define sram-current-symbolic #f)
+
+(define (sram-add-symbol addr sym)
+  (vector-set! SRAM-SYMBOLIC addr sym))
+
+(define (symbolic-append symb-proc (n 1))
+  (if symb-proc
+      (cons symb-proc (get-symbolic-history n))
+      (let ([hist (get-symbolic-history n)])
+        (if (= n 1) (car hist) hist))))
+
+(define SYMBOLIC-HISTORY-N 3)
+(define *symbolic-history* (make-vector SYMBOLIC-HISTORY-N #f))
+(define *symbolic-history-ptr* 0)
+(define (add-symbolic-history! val)
+  (vector-set! *symbolic-history* *symbolic-history-ptr* val)
+  (set! *symbolic-history-ptr* (modulo (+ *symbolic-history-ptr* 1)
+                                       SYMBOLIC-HISTORY-N)))
+
+(define (get-symbolic-history n)
+  (for/list ([i n])
+    (vector-ref *symbolic-history*
+                (modulo (- *symbolic-history-ptr* i 1)
+                        SYMBOLIC-HISTORY-N))))
+
 (define RAMEND (+ #x045f 1))
 (define SRAM (make-vector RAMEND #x00))
-;; get and set bytes
-(define (sram-get-byte addr)
-  (if (>= addr RAMEND)
-      (begin
-        (printf "WARNING: address outside RAMEND ~a~n" 
-                (num->hex addr))
-        (vector-ref SRAM (modulo (+ addr IO-SIZE) RAMEND)))
-      (vector-ref SRAM addr)))
-(define (sram-set-byte addr val)
-  (if (> addr RAMEND)
-      (begin
-        (print "WARNING: address outside RAMEND~n")
-        (vector-set! SRAM (modulo (+ addr IO-SIZE) RAMEND) val))
-      (vector-set! SRAM addr val)))
+(define SRAM-SYMBOLIC (make-vector RAMEND #f))
 
-(define (sram-set-bit addr i)
-  (sram-set-byte addr (ior (sram-get-byte addr) (<< 1 i))))
-(define (sram-clear-bit addr i)
-  (sram-set-byte addr (& (sram-get-byte addr)
-                         (bitwise-not (<< 1 i)))))
-(define (sram-get-bit addr i)
-  (& (<< (vector-ref SRAM addr) (- i)) 1))
+;; get and set bytes
+(define (sram-get-byte addr (get-symbolic? get-symbolic?))
+  (define address addr)
+  (when (>= addr RAMEND)
+    (printf "WARNING: address outside RAMEND ~a~n" (num->hex addr))
+    (set! address (modulo (+ addr IO-SIZE) RAMEND)))
+  (set! sram-current-symbolic #f)
+  (when get-symbolic?
+    (set! sram-current-symbolic (vector-ref SRAM-SYMBOLIC address)))
+  (define val (vector-ref SRAM address))
+  (when sram-current-symbolic
+    (add-symbolic-history! sram-current-symbolic))
+  (unless sram-current-symbolic
+    (add-symbolic-history! val)
+    (set! sram-current-symbolic val))
+  val)
+
+(define (sram-set-byte addr val (sym-val #f) #:get-symbolic? (get-symbolic? get-symbolic?) #:op-print (op-print #f))
+  (define address addr)
+  (when (> addr RAMEND)
+    (print "WARNING: address outside RAMEND~n")
+    (set! address (modulo (+ addr IO-SIZE) RAMEND)))
+  (vector-set! SRAM address val)
+  (when get-symbolic?
+    (vector-set! SRAM-SYMBOLIC address sym-val)
+    (when op-print
+      (set! sym-val (list op-print sym-val)))
+    (fprintf SYMBOLIC-OUT "~a:~a: ~a~n" CURRENT-CLOCK-CYCLE PC sym-val)))
+
+(define (sram-set-bit addr i (get-symbolic? #f))
+  (sram-set-byte addr (ior (sram-get-byte addr get-symbolic?) 
+                           (<< 1 i)) 
+                 #:get-symbolic? get-symbolic?))
+(define (sram-clear-bit addr i (get-symbolic? #f))
+  (sram-set-byte addr (& (sram-get-byte addr get-symbolic?)
+                         (bitwise-not (<< 1 i)))
+                 #:get-symbolic? get-symbolic?))
+(define (sram-get-bit addr i (get-symbolic? #f))
+  (& (<< (sram-get-byte addr get-symbolic?) (- i)) 1))
 ;; map register file
-(define (get-x) (ior (<< (sram-get-byte 27) 8)
-                     (sram-get-byte 26)))
-(define (get-y) (ior (<< (sram-get-byte 29) 8)
-                     (sram-get-byte 28)))
-(define (get-z) (ior (<< (sram-get-byte 31) 8)
-                     (sram-get-byte 30)))
+(define (get-x (get-symbolic? #f)) 
+  (ior (<< (sram-get-byte 27 get-symbolic?) 8)
+       (sram-get-byte 26 get-symbolic?)))
+(define (get-y (get-symbolic? #f)) 
+  (ior (<< (sram-get-byte 29 get-symbolic?) 8)
+       (sram-get-byte 28 get-symbolic?)))
+(define (get-z (get-symbolic? #f))
+  (ior (<< (sram-get-byte 31 get-symbolic?) 8)
+       (sram-get-byte 30 get-symbolic?)))
 (define (inc-x)
   (define x (+ (get-x) 1))
-  (sram-set-byte 27 (<<& x -8 #xff))
-  (sram-set-byte 26 (& x #xff)))
+  (sram-set-byte 27 (<<& x -8 #xff) #:get-symbolic? #f)
+  (sram-set-byte 26 (& x #xff) #:get-symbolic? #f))
 (define (inc-y)
   (define y (+ (get-y) 1))
-  (sram-set-byte 29 (<<& y -8 #xff))
-  (sram-set-byte 28 (& y #xff)))
+  (sram-set-byte 29 (<<& y -8 #xff) #:get-symbolic? #f)
+  (sram-set-byte 28 (& y #xff) #:get-symbolic? #f))
 (define (inc-z)
   (define z (+ (get-z) 1))
-  (sram-set-byte 31 (<<& z -8 #xff))
-  (sram-set-byte 30 (& z #xff)))
+  (sram-set-byte 31 (<<& z -8 #xff) #:get-symbolic? #f)
+  (sram-set-byte 30 (& z #xff) #:get-symbolic? #f))
 (define (print-sram)
   (define (dots-when-zero num)
     (if (zero? num) ".." (num->hexb num)))
@@ -339,28 +394,40 @@
        word-low))
 
 (define OUT (current-output-port))
+(define SYMBOLIC-OUT #f)
 (define CURRENT-CLOCK-CYCLE 0)
 
-(define (reset-machine (filename #f))
+(define (reset-machine (trace #f)
+                       #:symbolic-trace (symbolic-trace "/tmp/symbolic-trace.txt"))
   (set! FLASH (make-vector FLASHEND #x00))
+  (set! FLASH-SYMBOLIC (make-vector (* FLASHEND 2) #f))
   (set! SRAM (make-vector RAMEND #x00))
+  (set! SRAM-SYMBOLIC (make-vector RAMEND #f))
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
   (set! PC 0)
-  (if filename
+  (if trace
       (begin
         (when (and (port? OUT)
                    (not (port-closed? OUT))
                    (not (eq? OUT (current-output-port))))
           (close-output-port OUT))
-        (set! OUT (open-output-file (expand-user-path filename) 
+        (set! OUT (open-output-file (expand-user-path trace) 
                                     #:exists 'replace)))
       (begin
         (when (and (port? OUT) 
                    (not (port-closed? OUT))
                    (not (eq? OUT (current-output-port))))
           (close-output-port OUT))
-        (set! OUT (current-output-port)))))
+        (set! OUT (current-output-port))))
+  (when (and (port? SYMBOLIC-OUT)
+             (not (port-closed? SYMBOLIC-OUT)))
+    (close-output-port SYMBOLIC-OUT))
+  (set! SYMBOLIC-OUT (open-output-file
+                      (expand-user-path symbolic-trace) 
+                      #:exists 'replace))
+  (printf "~a~n" SYMBOLIC-OUT)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 3) opcode interpreter
@@ -433,10 +500,6 @@
   #f)
 
 (define debug? #f)
-
-
-
-
 
 (define (fetch-and-decode)
   ;; fetch
@@ -1663,6 +1726,14 @@
         (run)
         (begin (run)
                (loop)))))
+
+;; (define (go-address address)
+;;   (fetch-and-decode)
+;;   (let loop ()
+;;     (if (= PC address)
+;;         (fetch-and-decode)
+;;         (begin (fetch-and-decode)
+;;                (loop)))))
 
 (define (print-registers)
   (for ([r 32])
