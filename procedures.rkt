@@ -1,7 +1,6 @@
 (define PROCEDURES #f)
 (define clock-cycles 0)
 (define symbol-need-to-print? #f)
-(define symbol #f)
 
 ;; 2 bit register id (R24 R26 R28 R30)
 (define mask-Rd-2 #x0030)
@@ -845,21 +844,3 @@
               (map num->hex args)))
     (unless opcode-info
       (printf "~a: #f~n" i))))
-
-
-;; small test
-;; (define hex-file "./tests/main.hex")
-;; (define symbol-file "./tests/main.sim")
-;; (load-symbol-table symbol-file)
-;; (reset-machine)
-;; (hex->flash! hex-file)
-;; (define PROCEDURES #f)
-;;  (flash->procedures FLASH))
-;; ;;(print-flash-procedures PROCEDURES)
-;; (print-flash-procedures (vector-take PROCEDURES 10))
-
-;; (set! PC (lookup-symbol "main"))
-;; (set! debug? #t)
-;; (run 1000)
-;; (run 1)
-
