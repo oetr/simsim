@@ -1,6 +1,6 @@
 (define PROCEDURES #f)
 (define clock-cycles 0)
-(define symbol-need-to-print? #f)
+(define symbol-need-to-print? #t)
 
 ;; 2 bit register id (R24 R26 R28 R30)
 (define mask-Rd-2 #x0030)
@@ -69,19 +69,37 @@
   (define C (sr-get-C))
   (define R (& (+ Rd-val Rr-val C) #xff))
   (sram-set-byte Rd-val R)
-  (compute-C Rd-val Rr-val R 7)
+  (compute-C-add Rd-val Rr-val R 7)
   (compute-Z R)
-  (compute-H R 3)
   (compute-N R 7)
   (compute-V Rd-val Rr-val R 7)
   (compute-S)
-  (copmute-H Rd-val Rr-val R 3)
+  (compute-H Rd-val Rr-val R 3)
   (when debug?
     (print-instruction-uniquely OUT 'ADC)
     (fprintf OUT "ADC R~a[~a],R~a[~a],C[~a] ; ~a" 
              Rd (num->hexb Rd-val) 
              Rr (num->hexb Rr-val)
              C (num->hexb R)))
+  (set! clock-cycles 1))
+
+(define (avr-ADD Rd Rr)
+  (define Rd-val (sram-get-byte Rd))
+  (define Rr-val (sram-get-byte Rr))
+  (define R (& (+ Rd-val Rr-val) #xff))
+  (sram-set-byte Rd R)
+  (compute-Z R)
+  (compute-C-add Rd-val Rr-val R 7)
+  (compute-N R 7)
+  (compute-V Rd-val Rr-val R 7)
+  (compute-S)
+  (compute-H Rd-val Rr-val R 3)
+  (when debug?
+    (print-instruction-uniquely OUT 'ADD)
+    (fprintf OUT "ADD R~a[~a],R~a[~a] ; ~a" 
+             Rd (num->hexb Rd-val)
+             Rr (num->hexb Rr-val)
+             (num->hexb R)))
   (set! clock-cycles 1))
 
 
@@ -127,6 +145,13 @@
              (num->hex R)))
   (set! clock-cycles 1))
 
+(define (avr-BCLR s)
+  (sr-clear-bit s)
+  (when debug?
+    (print-instruction-uniquely OUT 'BCLR)
+    (fprintf OUT "BCLR ~a" s))
+  (set! clock-cycles 1))
+
 (define (avr-BRBC k-num b)
   (define k (2-complement->num 7 k-num))
   (define b-val (sr-get-bit b))
@@ -135,8 +160,36 @@
     (set! clock-cycles (+ clock-cycles 1)))
   (set! clock-cycles (+ clock-cycles 1))
   (when debug?
-    (print-instruction-uniquely OUT 'BRNE clock-cycles)
+    (print-instruction-uniquely OUT 'BRBC clock-cycles)
     (fprintf OUT "BRBC ~a[~a], ~a ; ~a" b b-val k (zero? b-val))))
+
+(define (avr-BRBS k-num b)
+  (define k (2-complement->num 7 k-num))
+  (define b-val (sr-get-bit b))
+  (when (one? b-val)
+    (set! PC (+ PC k))
+    (set! clock-cycles (+ clock-cycles 1)))
+  (set! clock-cycles (+ clock-cycles 1))
+  (when debug?
+    (print-instruction-uniquely OUT 'BRBS clock-cycles)
+    (fprintf OUT "BRBS s[~a],k[~a] ; ~a" b-val k (one? b-val))))
+
+(define (avr-BSET s)
+  (sr-set-bit s)
+  (when debug?
+    (print-instruction-uniquely OUT 'BSET)
+    (fprintf OUT "BSET"))
+  (set! clock-cycles 1))
+
+(define (avr-BST Rd b)
+  (define Rd-val (sram-get-byte Rd))
+  (if (! Rd-val b) (sr-set-T) (sr-clear-T))
+  (when debug?
+    (print-instruction-uniquely OUT 'BST)
+    (fprintf OUT "BST R~a[~a],b[~a] ; ~a" 
+             Rd (num->hex Rd-val)
+             b (sr-get-T)))
+  (set! clock-cycles 1))
 
 (define (avr-CBI A b)
   (io-clear-bit A b)
@@ -144,6 +197,24 @@
     (print-instruction-uniquely OUT 'CBI)
     (fprintf OUT "CBI A[~a],b[~a]" (num->hex A) b))
   (set! clock-cycles 2))
+
+(define (avr-CP Rd Rr)
+  (define Rd-val (sram-get-byte Rd))
+  (define Rr-val (sram-get-byte Rr))
+  (define R (& (- Rd-val Rr-val) #xff)) ;; result
+  (compute-H Rd-val Rr-val R)
+  (compute-V Rd-val Rr-val R)
+  (compute-N R)
+  (compute-S)
+  (compute-Z R)
+  (compute-C Rd-val Rr-val R)
+  (when debug?
+    (print-instruction-uniquely OUT 'CP)
+    (fprintf OUT "CP R~a[~a],R~a[~a] ; ~a"
+             Rd (num->hex Rd-val) 
+             Rr (num->hex Rr-val)
+             (num->hex R)))
+  (set! clock-cycles 1))
 
 (define (avr-CPC Rd Rr)
   (define Rd-val (sram-get-byte Rd))
@@ -223,6 +294,20 @@
              Rd (num->hex Rd-val)
              Rr (num->hex Rr-val)
              (= Rd-val Rr-val))))
+
+(define (avr-DEC Rd)
+  (define Rd-val (sram-get-byte Rd))
+  (define R (& (- Rd-val 1) #xff))
+  (sram-set-byte Rd R)
+  (if (= Rd-val #x80) (sr-set-V) (sr-clear-V))
+  (compute-N R 7)
+  (compute-S)
+  (compute-Z R)
+  (when debug?
+    (print-instruction-uniquely OUT 'DEC)
+    (fprintf OUT "DEC R~a[~a] ; ~a" 
+             Rd (num->hex Rd-val) (num->hex R)))
+  (set! clock-cycles 1))
 
 (define (avr-EOR Rd Rr)
   (define Rd-val (sram-get-byte Rd))
@@ -360,6 +445,25 @@
     (fprintf OUT "LPM R~a,Z+ [~a]" Rd (num->hex z-val)))
   (set! clock-cycles 3))
 
+(define (avr-LSR Rd)
+  (define Rd-val (sram-get-byte Rd))
+  (define R (<< Rd-val -1))
+  (sram-set-byte Rd R)
+  (if (! Rd-val 0) (sr-set-C) (sr-clear-C))
+  (compute-Z R)
+  (sr-clear-N)
+  (if (one? (bitwise-xor (sr-get-N) (sr-get-C)))
+      (sr-set-V) (sr-clear-V))
+  (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
+      (sr-set-S) (sr-clear-S))
+  (when debug?
+    (print-instruction-uniquely OUT 'LSR)
+    (fprintf OUT "LSR R~a[~a] ; ~a" 
+             Rd 
+             (num->hex Rd-val)
+             (num->hex R)))
+  (set! clock-cycles 1))
+
 (define (avr-MOV Rd Rr)
   (define Rd-val (sram-get-byte Rd))
   (define Rr-val (sram-get-byte Rr))
@@ -456,12 +560,74 @@
     (fprintf OUT "RJMP ~a" (num->hex (- (& (+ PC k) #xfff) PC -1))))
   (set! clock-cycles 2))
 
+(define (avr-ROR Rd)
+  (define C (sr-get-C))
+  (define Rd-val (sram-get-byte Rd))
+  (define low-bit (bit-ref Rd-val 0))
+  (define R (ior (<< C 7) (<< Rd-val -1)))
+  (sram-set-byte Rd R)
+  (if (one? low-bit) (sr-set-C) (sr-clear-C))
+  (if (one? C) (sr-set-N) (sr-clear-N))
+  (if (one? (bitwise-xor (sr-get-N) low-bit))
+      (sr-set-V) (sr-clear-V))
+  (compute-S)
+  (compute-Z R)
+  (when debug?
+    (print-instruction-uniquely OUT 'ROR)
+    (fprintf OUT "ROR R~a[~a] ; ~a" Rd (num->hex Rd-val) (num->hex R)))
+  (set! clock-cycles 1))
+
+(define (avr-SBCI Rd K)
+  (define Rd-val (sram-get-byte Rd))
+  (define C (sr-get-C))
+  (define R (& (- Rd-val K C) #xff))
+  (sram-set-byte Rd R)
+  (compute-H Rd-val K R 3)
+  (compute-V Rd-val K R 7)
+  (compute-N R 7)
+  (compute-S)
+  (unless (zero? R) (sr-clear-Z))
+  (compute-C Rd-val K R 7)
+  (when debug?
+    (print-instruction-uniquely OUT 'SBCI)
+    (fprintf OUT "SBCI R~a[~a],K[~a] ; ~a" 
+             Rd (num->hex Rd-val) (num->hex K) (num->hex R)))
+  (set! clock-cycles 1)
+  )
+
 (define (avr-SBI A b)
   (io-set-bit A b)
   (when debug?
     (print-instruction-uniquely OUT 'SBI)
     (fprintf OUT "SBI A[~a],b[~a]"
              (num->hex A) b))
+  (set! clock-cycles 2))
+
+(define (avr-SBIW K Rd-2-bits)
+  (define Rd (+ 24 (* Rd-2-bits 2)))
+  (define Rd+ (+ Rd 1))
+  (define Rdh (sram-get-byte Rd+))
+  (define Rdl (sram-get-byte Rd))
+  (define Rd-val (ior (<< Rdh 8) Rdl))
+  (define R (& (- Rd-val K) #xffff))
+  (sram-set-byte Rd+ (<< R -8))
+  (sram-set-byte Rd (& R #xff))
+  (compute-Z R)
+  (if (one? (& (bit-ref R 15)
+               (n-bit-ref Rdh 7)))
+      (sr-set-C) (sr-clear-C))
+  (compute-N R 15)
+  (if (one? (& (n-bit-ref R 15)
+               (bit-ref Rdh 7)))
+      (sr-set-V) (sr-clear-V))
+  (compute-S)
+  (when debug?
+    (print-instruction-uniquely OUT 'SBIW)
+    (fprintf OUT "SBIW R~a:R~a[~a],K[~a] ; ~a"
+             Rd Rd+
+             (num->hex Rd-val) 
+             (num->hex K) 
+             (num->hex R)))
   (set! clock-cycles 2))
 
 (define (avr-ST-X Rr)
@@ -535,6 +701,23 @@
   (inc-pc)
   (set! clock-cycles 2))
 
+(define (avr-SUBI Rd-4-bytes K)
+  (define Rd (+ 16 Rd-4-bytes))
+  (define Rd-val (sram-get-byte Rd))
+  (define R (& (- Rd-val K) #xff))
+  (sram-set-byte Rd R)
+  (compute-H Rd-val K R 3)
+  (compute-V Rd-val K R 7)  
+  (compute-N R 7)
+  (compute-S)
+  (compute-Z R)
+  (compute-C Rd-val K R 7)
+  (when debug?
+    (print-instruction-uniquely OUT 'SUBI)
+    (fprintf OUT "SUBI R~a[~a],K[~a] ; ~a" 
+             Rd (num->hex Rd-val) (num->hex K) (num->hex R)))
+  (set! clock-cycles 1))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 32-bit instructions
 ;; either get the second half, when saving
@@ -584,9 +767,9 @@
   (make-hash
    (list
     (list #x1C00 'ADC avr-ADC 2 #f)
-    (list #x0C00 'ADD 'avr-ADD 2 #f)
+    (list #x0C00 'ADD avr-ADD 2 #f)
     (list #x2000 'AND 'avr-AND 2 #f)
-    (list #x1400 'CP 'avr-CP 2 #f)
+    (list #x1400 'CP avr-CP 2 #f)
     (list #x0400 'CPC avr-CPC 2 #f)
     (list #x1000 'CPSE avr-CPSE 2 #f)
     (list #x2400 'EOR avr-EOR 2 #f)
@@ -601,7 +784,7 @@
    (list
     (list #x9405 'ASR 'avr-ASR 2 #f)
     (list #x9400 'COM 'avr-COM 2 #f)
-    (list #x940A 'DEC 'avr-DEC 2 #f)
+    (list #x940A 'DEC avr-DEC 2 #f)
     (list #x9006 'ELPM-Z 'avr-ELPM-Z 2 #f)
     (list #x9007 'ELPM-Z-incr 'avr-ELPM-Z-incr 2 #f)
     (list #x9403 'INC avr-INC 2 #f)
@@ -615,11 +798,11 @@
     (list #x9001 'LD-Z-incr avr-LD-Z-incr 2 #f)
     (list #x9004 'LPM-Z avr-LPM-Z 2 #f)
     (list #x9005 'LPM-Z-incr avr-LPM-Z-incr 2 #f)
-    (list #x9406 'LSR 'avr-LSR 2 #f)
+    (list #x9406 'LSR avr-LSR 2 #f)
     (list #x9401 'NEG 'avr-NEG 2 #f)
     (list #x900F 'POP avr-POP 2 #f)
     (list #x920F 'PUSH avr-PUSH 2 #f)
-    (list #x9407 'ROR 'avr-ROR 2 #f)
+    (list #x9407 'ROR avr-ROR 2 #f)
     (list #x9200 'STS avr-STS-get-args 2 #t)
     (list #x920C 'ST-X avr-ST-X 2 #f)
     (list #x920E 'ST-X-decr 'avr-ST-X-decr 2 #f)
@@ -637,14 +820,14 @@
     (list #x3000 'CPI avr-CPI 2 #f)
     (list #xE000 'LDI avr-LDI 2 #f)
     (list #x6000 'ORI avr-ORI 2 #f)
-    (list #x4000 'SBCI 'avr-SBCI 2 #f)
-    (list #x5000 'SUBI 'avr-SUBI 2 #f)
+    (list #x4000 'SBCI avr-SBCI 2 #f)
+    (list #x5000 'SUBI avr-SUBI 2 #f)
     (list #xF800 'BLD 'avr-BLD 2 #f))))
 ;; opcodes with a register Rd and a register bit number b
 (define opcodes-Rd-b
   (make-hash
    (list
-    (list #xFA00 'BST 'avr-BST 2 #f)
+    (list #xFA00 'BST avr-BST 2 #f)
     (list #xFC00 'SBRC 'avr-SBRC 2 #f)
     (list #xFE00 'SBRS 'avr-SBRS 2 #f))))
 ;; opcodes with a relative 7-bit address k and a register bit number b
@@ -652,7 +835,7 @@
   (make-hash
    (list
     (list #xF400 'BRBC avr-BRBC 2 #f)
-    (list #xF000 'BRBS 'avr-BRBS 2 #f))))
+    (list #xF000 'BRBS avr-BRBS 2 #f))))
 ;; opcodes with a 6-bit address displacement q and a register Rd
 (define opcodes-6-bit-q-Rd
   (make-hash
@@ -671,14 +854,14 @@
 (define opcodes-s
   (make-hash
    (list
-    (list #x9488 'BCLR 'avr-BCLR 2 #f)
-    (list #x9408 'BSET 'avr-BSET 2 #f))))
+    (list #x9488 'BCLR avr-BCLR 2 #f)
+    (list #x9408 'BSET avr-BSET 2 #f))))
 ;; opcodes with a 6-bit constant K and a register Rd
 (define opcodes-6-bit-K-Rd
   (make-hash
    (list
     (list #x9600 'ADIW avr-ADIW 2 #f)
-    (list #x9700 'SBIW 'avr-SBIW 2 #f))))
+    (list #x9700 'SBIW avr-SBIW 2 #f))))
 ;; opcodes with a 5-bit IO Addr A and register bit number b
 (define opcodes-5-bit-A-b
   (make-hash
@@ -810,21 +993,25 @@
   (set! PROCEDURES (flash->procedures FLASH)))
 
 (define (run (n 1))
-  (for ([i n])   
+  (for ([i n])
     (define symbol (lookup-address PC))
-    (set! symbol-need-to-print? #f)
     (define instr (vector-ref PROCEDURES PC))
     (inc-pc)
+    (set! clock-cycles 0)
     (when instr
       (define 32-bit? (opcode-info-32-bit? instr))
       (define args    (opcode-info-args instr))
       (define proc (opcode-info-proc instr))
+      (define opcode (opcode-info-opcode instr))
+      (when debug?     
+        (fprintf OUT "~a|~a|~a|"
+                 CURRENT-CLOCK-CYCLE PC (num->hex opcode)))
       (apply proc args)
       (when debug?
         (when (and symbol symbol-need-to-print?) 
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
-      (set! CURRENT-CLOCK-CYCLE
+      (set! CURRENT-CLOCK-CYCLE 
             (+ CURRENT-CLOCK-CYCLE clock-cycles)))))
 
 (define (print-flash-procedures procs)

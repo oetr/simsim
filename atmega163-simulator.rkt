@@ -425,6 +425,14 @@
                     (n-bit-ref r1 bit))))
       (sr-set-C) (sr-clear-C)))
 
+(define (compute-C-add r1 r2 result (bit 7))
+  (if (one? (ior (& (bit-ref r1 bit)
+                    (bit-ref r2 bit))
+                 (& (bit-ref r2 bit)
+                    (n-bit-ref result bit))
+                 (& (n-bit-ref result bit)
+                    (bit-ref r1 bit))))
+      (sr-set-C) (sr-clear-C)))
 
 ;; ???
 
@@ -1339,8 +1347,7 @@
          (set! clock-cycles (+ clock-cycles 1))
          (when debug?
            (print-instruction-uniquely OUT 'BRCC clock-cycles)
-           (fprintf OUT "BRCC ~a"  (one? C)))
-         ]
+           (fprintf OUT "BRCC ~a" (zero? C)))]
         [(and (= hb0 0)  ;;;;;;;;;;;;;;;;;;;; ADD without carry
               (= (& hb1 #b1100) #b1100))
          (define Rd (ior (&<< hb1 #b0001 4) hb2))

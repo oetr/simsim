@@ -113,11 +113,12 @@
     (SBRC 31 "SBRC" 1 2)
     (SBRC 31 "SBRC Rr,b" 1 2)
 
-    (BRNE 32 "BRNE" 1 2)
+    (BRBC 32 "BRBC" 1 2)
+    (BRNE 3200 "BRNE" 1 2)
 
     (BREQ 33 "BREQ" 1 2)
 
-    (BRCS 34 "BRCS" 1 2)
+    (BRBS 34 "BRBS" 1 2)
     
     (BRTC 35 "BRTC" 1 2)
 
@@ -147,11 +148,13 @@
 
     (CLC 45 "CLC" 1)
 
-    (CLT 46 "CLT" 1)
+    (BCLR 46 "BCLR" 1)
+    (CLT 4600 "CLT" 1)
 
     (SEC 47 "SEC" 1)
 
-    (SET 48 "SET" 1)
+    (BSET 48 "BSET" 1)
+    (SET 4800 "SET" 1)
 
     (SBC 49 "SBC" 1)
     
