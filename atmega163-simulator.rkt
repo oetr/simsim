@@ -21,6 +21,11 @@
          (bitwise-bit-field num 0 (- width 1)))
       num))
 
+(define (num->bytes num (n-bytes 32))
+  (list->bytes 
+   (for/list ([i (range (- (quotient n-bytes 8) 1) -1 -1)])
+     (<<& num (* i -8) #xff))))
+
 (define (hex->flash! a-file)
   (define hex (file->lines (expand-user-path a-file)))
   ;; write data
@@ -153,18 +158,23 @@
 (define SRAM (make-vector RAMEND #x00))
 ;; get and set bytes
 (define (sram-get-byte addr)
-  (if (>= addr RAMEND)
-      (begin
-        (printf "WARNING: address outside RAMEND ~a~n" 
-                (num->hex addr))
-        (vector-ref SRAM (modulo (+ addr IO-SIZE) RAMEND)))
-      (vector-ref SRAM addr)))
+  (define address addr)
+  (when (>= addr RAMEND)
+    (printf "WARNING: address outside RAMEND ~a~n" (num->hex addr))
+    (set! address (modulo (+ addr IO-SIZE) RAMEND)))
+  (define data (vector-ref SRAM address))
+  (save-intermediate-values address)
+  (save-intermediate-values data)
+  data)
 (define (sram-set-byte addr val)
-  (if (> addr RAMEND)
-      (begin
-        (print "WARNING: address outside RAMEND~n")
-        (vector-set! SRAM (modulo (+ addr IO-SIZE) RAMEND) val))
-      (vector-set! SRAM addr val)))
+  (define address addr)
+  (when (> addr RAMEND)
+    (print "WARNING: address outside RAMEND~n")
+    (set! address (modulo (+ addr IO-SIZE) RAMEND)))
+  (vector-set! SRAM address val)
+  (save-intermediate-values address)
+  (save-intermediate-values val))
+  
 
 (define (sram-set-bit addr i)
   (sram-set-byte addr (ior (sram-get-byte addr) (<< 1 i))))

@@ -2,6 +2,40 @@
 (define clock-cycles 0)
 (define symbol-need-to-print? #t)
 
+(define print-intermediate-values? #t)
+(define INTERMEDIATE-VALUES '())
+
+(define (save-intermediate-values data)
+  (when symbol-need-to-print?
+    (define instr (vector-ref PROCEDURES PC))
+    (when instr
+      (define 32-bit? (opcode-info-32-bit? instr))
+      (define args    (opcode-info-args    instr))
+      (define proc    (opcode-info-proc    instr))
+      (define opcode  (opcode-info-opcode  instr))
+      (define leakage
+        (list CURRENT-CLOCK-CYCLE (- PC 1) opcode data))
+      (set! INTERMEDIATE-VALUES 
+            (cons leakage INTERMEDIATE-VALUES)))))
+
+(define (intermediate-values->file reversed-vals file-name)
+  (define a-file (open-output-file (expand-user-path file-name)
+                                   #:exists 'truncate))
+  (define vals (reverse reversed-vals))
+  ;; TODO: get rid of duplicates
+  ;; save all in a file
+  (define (print-with-separator a-list (sep ","))
+    (define l (length a-list))
+    (for ([v a-list]
+          [i l])
+      (fprintf a-file "~a" v)
+      (when (< i (- l 1))
+        (fprintf a-file "~a" sep)))
+    (fprintf a-file "~n"))
+  (for ([line vals])
+    (print-with-separator line))
+  (close-output-port a-file))
+
 ;; 2 bit register id (R24 R26 R28 R30)
 (define mask-Rd-2 #x0030)
 ;; 3 bit register id (R16 - R23)
@@ -1005,7 +1039,7 @@
       (define opcode (opcode-info-opcode instr))
       (when debug?     
         (fprintf OUT "~a|~a|~a|"
-                 CURRENT-CLOCK-CYCLE PC (num->hex opcode)))
+                 CURRENT-CLOCK-CYCLE (- PC 1) (num->hex opcode)))
       (apply proc args)
       (when debug?
         (when (and symbol symbol-need-to-print?) 
