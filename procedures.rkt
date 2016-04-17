@@ -4,19 +4,33 @@
 
 (define print-intermediate-values? #t)
 (define INTERMEDIATE-VALUES '())
+(define SAVED-VALS '())
+(define SAVED-OPCODE #f)
+(define SAVED-PC #f)
+(define WAS-CALL? #f)
 
 (define (save-intermediate-values data)
   (when symbol-need-to-print?
-    (define instr (vector-ref PROCEDURES PC))
-    (when instr
-      (define 32-bit? (opcode-info-32-bit? instr))
-      (define args    (opcode-info-args    instr))
-      (define proc    (opcode-info-proc    instr))
-      (define opcode  (opcode-info-opcode  instr))
-      (define leakage
-        (list CURRENT-CLOCK-CYCLE (- PC 1) opcode data))
-      (set! INTERMEDIATE-VALUES 
-            (cons leakage INTERMEDIATE-VALUES)))))
+    (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
+      ;; save accumulated data
+      (when SAVED-PC
+        (set! INTERMEDIATE-VALUES
+              (cons (append (list PREVIOUS-CLOCK-CYCLE
+                                  (- CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
+                                  SAVED-PC
+                                  SAVED-OPCODE
+                                  (length SAVED-VALS))
+                            SAVED-VALS)
+                    INTERMEDIATE-VALUES)))
+      ;; clear accumulated data and set anew
+      (set! SAVED-VALS '())
+      (define instr (vector-ref PROCEDURES PC))
+      (when instr
+        (set! SAVED-OPCODE (opcode-info-opcode instr))
+        (set! SAVED-PC (- PC 1))))
+    (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)
+    (set! SAVED-VALS (cons data SAVED-VALS))
+    ))
 
 (define (intermediate-values->file reversed-vals file-name)
   (define a-file (open-output-file (expand-user-path file-name)
@@ -1045,7 +1059,7 @@
         (when (and symbol symbol-need-to-print?) 
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
-      (set! CURRENT-CLOCK-CYCLE 
+      (set! CURRENT-CLOCK-CYCLE
             (+ CURRENT-CLOCK-CYCLE clock-cycles)))))
 
 (define (print-flash-procedures procs)

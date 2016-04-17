@@ -350,12 +350,16 @@
 
 (define OUT (current-output-port))
 (define CURRENT-CLOCK-CYCLE 0)
+(define PREVIOUS-CLOCK-CYCLE #f)
 
 (define (reset-machine (filename #f))
   (set! FLASH (make-vector FLASHEND #x00))
   (set! SRAM (make-vector RAMEND #x00))
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
+  (set! PREVIOUS-CLOCK-CYCLE #f)
+  (set! SAVED-PC #f)
+  (set! INTERMEDIATE-VALUES '())
   (set! PC 0)
   (if filename
       (begin
