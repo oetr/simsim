@@ -10,6 +10,7 @@
 (define WAS-CALL? #f)
 
 (define (save-intermediate-values data)
+;;  (printf "~a ** ~a: ~a-~a ; ~a,~a~n" SAVED-PC PC PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE) symbol-need-to-print?)
   (when symbol-need-to-print?
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
       ;; save accumulated data
@@ -32,9 +33,9 @@
     (set! SAVED-VALS (cons data SAVED-VALS))
     ))
 
-(define (intermediate-values->file reversed-vals file-name)
+(define (intermediate-values->file reversed-vals file-name #:exists (exists 'append))
   (define a-file (open-output-file (expand-user-path file-name)
-                                   #:exists 'truncate))
+                                   #:exists exists))
   (define vals (reverse reversed-vals))
   ;; TODO: get rid of duplicates
   ;; save all in a file
@@ -587,7 +588,6 @@
   (stack-push-word PC)
   (set! PC (+ PC k))
   (when debug?
-    (set! symbol-need-to-print? #f)
     (print-instruction-uniquely OUT 'RCALL)
     (fprintf OUT "RCALL ~a" (lookup-address PC)))
   (set! clock-cycles 3))

@@ -352,8 +352,9 @@
 (define CURRENT-CLOCK-CYCLE 0)
 (define PREVIOUS-CLOCK-CYCLE #f)
 
-(define (reset-machine (filename #f))
-  (set! FLASH (make-vector FLASHEND #x00))
+(define (reset-machine (filename #f) #:keep-flash? (keep-flash? #f))
+  (unless keep-flash?
+    (set! FLASH (make-vector FLASHEND #x00)))
   (set! SRAM (make-vector RAMEND #x00))
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
