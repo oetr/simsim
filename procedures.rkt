@@ -113,11 +113,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (avr-NOP . args) avr-NOP)
 (define (avr-ADC Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (define C (sr-get-C))
   (define R (& (+ Rd-val Rr-val C) #xff))
-  (sram-set-byte Rd-val R)
+  (set-register Rd R)
   (compute-C-add Rd-val Rr-val R 7)
   (compute-Z R)
   (compute-N R 7)
@@ -133,10 +133,10 @@
   (set! clock-cycles 1))
 
 (define (avr-ADD Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (define R (& (+ Rd-val Rr-val) #xff))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (compute-Z R)
   (compute-C-add Rd-val Rr-val R 7)
   (compute-N R 7)
@@ -155,12 +155,12 @@
 (define (avr-ADIW K Rd-2-bits)
   (define Rd (+ 24 (* Rd-2-bits 2)))
   (define Rd+ (+ Rd 1))
-  (define Rdh (sram-get-byte Rd+))
-  (define Rdl (sram-get-byte Rd))
+  (define Rdh (get-register Rd+))
+  (define Rdl (get-register Rd))
   (define Rd-val (ior (<< Rdh 8) Rdl))
   (define R (& (+ Rd-val K) #xffff))
-  (sram-set-byte Rd+ (<< R -8))
-  (sram-set-byte Rd (& R #xff))
+  (set-register Rd+ (<< R -8))
+  (set-register Rd (& R #xff))
   (if (zero? R) (sr-set-Z) (sr-clear-Z))
   (if (one? (& (n-bit-ref R 15)
                (bit-ref Rdh 7)))
@@ -179,9 +179,9 @@
 
 (define (avr-ANDI Rd-16 K)
   (define Rd (+ 16 Rd-16))
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (& Rd-val K))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (sr-clear-V)
   (compute-N R)
   (compute-S)
@@ -231,7 +231,7 @@
   (set! clock-cycles 1))
 
 (define (avr-BST Rd b)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (if (! Rd-val b) (sr-set-T) (sr-clear-T))
   (when debug?
     (print-instruction-uniquely OUT 'BST)
@@ -248,8 +248,8 @@
   (set! clock-cycles 2))
 
 (define (avr-CP Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (define R (& (- Rd-val Rr-val) #xff)) ;; result
   (compute-H Rd-val Rr-val R)
   (compute-V Rd-val Rr-val R)
@@ -266,8 +266,8 @@
   (set! clock-cycles 1))
 
 (define (avr-CPC Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (define C (sr-get-C))
   (define R (& (- Rd-val Rr-val C) #xff)) ;; result
   (if (one? (ior (& (n-bit-ref Rd-val 3) (bit-ref Rr-val 3))
@@ -302,7 +302,7 @@
 
 (define (avr-CPI Rd-16 K)
   (define Rd (+ Rd-16 16))
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define result (& (- Rd-val K) #xff))
   (if (one? (ior (& (n-bit-ref Rd-val 3) (bit-ref K 3))
                  (& (bit-ref result 3) (bit-ref K 3))
@@ -327,8 +327,8 @@
 
 
 (define (avr-CPSE Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (when (= Rd-val Rr-val)
     (define next-instr (vector-ref PROCEDURES PC))
     (when (opcode-info-32-bit? next-instr)
@@ -345,9 +345,9 @@
              (= Rd-val Rr-val))))
 
 (define (avr-DEC Rd)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (& (- Rd-val 1) #xff))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (if (= Rd-val #x80) (sr-set-V) (sr-clear-V))
   (compute-N R 7)
   (compute-S)
@@ -359,10 +359,10 @@
   (set! clock-cycles 1))
 
 (define (avr-EOR Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
   (define R (bitwise-xor Rd-val Rr-val))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (sr-clear-V)
   (if (! R 7) (sr-set-N) (sr-clear-N))
   (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
@@ -377,9 +377,9 @@
   (set! clock-cycles 1))
 
 (define (avr-INC Rd)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (& (+ Rd-val 1) #xff))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (if (= Rd-val #x7f) (sr-set-V) (sr-clear-V))
   (if (! R 7) (sr-set-N) (sr-clear-N))
   (if (one? (bitwise-xor (sr-get-N) (sr-get-V)))
@@ -393,7 +393,7 @@
 (define (avr-LD-X Rd)
   (define x (get-x))
   (define x-val (sram-get-byte x))
-  (sram-set-byte Rd x-val)
+  (set-register Rd x-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX)
     (fprintf OUT "LD R~a,X[~a]" Rd (num->hex x-val)))
@@ -402,7 +402,7 @@
 (define (avr-LD-X-incr Rd)
   (define x (get-x))
   (define x-val (sram-get-byte x))
-  (sram-set-byte Rd x-val)
+  (set-register Rd x-val)
   (inc-x)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX+)
@@ -412,7 +412,7 @@
 (define (avr-LDD-Y Rd q)
   (define y (get-y))
   (define val (sram-get-byte (+ y q)))
-  (sram-set-byte Rd val)
+  (set-register Rd val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+q)
     (fprintf OUT "LD R~a,Y+~a[~a]" Rd q (num->hex val)))
@@ -421,7 +421,7 @@
 (define (avr-LD-Y-incr Rd)
   (define y (get-y))
   (define y-val (sram-get-byte y))
-  (sram-set-byte Rd y-val)
+  (set-register Rd y-val)
   (inc-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+)
@@ -431,7 +431,7 @@
 (define (avr-LDD-Z Rd q)
   (define z (get-z))
   (define z-val (sram-get-byte (+ z q)))
-  (sram-set-byte Rd z-val)
+  (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+q)
     (fprintf OUT "LD R~a,Z+~a[~a]" Rd q (num->hex z-val)))
@@ -440,7 +440,7 @@
 (define (avr-LD-Z-incr Rd)
   (define z (get-z))
   (define z-val (sram-get-byte z))
-  (sram-set-byte Rd z-val)
+  (set-register Rd z-val)
   (inc-z)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+)
@@ -449,7 +449,7 @@
 
 (define (avr-LDI Rd-16 K)
   (define Rd (+ Rd-16 16))
-  (sram-set-byte Rd K)
+  (set-register Rd K)
   (when debug?
     (print-instruction-uniquely OUT 'LDI)
     (fprintf OUT "LDI R~a,K[~a]" Rd (num->hex K)))
@@ -459,7 +459,7 @@
   (list avr-LDS (list Rd k)))
 (define (avr-LDS Rr k)
   (define k-val (sram-get-byte k))
-  (sram-set-byte Rr k-val)
+  (set-register Rr k-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDS)
     (fprintf OUT "LDS R~a,(~a)[~a]" Rr (num->hex k) (num->hex k-val)))
@@ -469,7 +469,7 @@
 (define (avr-LPM _)
   (define z (get-z))
   (define z-val (flash-get-byte z))
-  (sram-set-byte 0 z-val)
+  (set-register 0 z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
     (fprintf OUT "LPM R0,Z[~a]" (num->hex z-val)))
@@ -478,7 +478,7 @@
 (define (avr-LPM-Z Rd)
   (define z (get-z))
   (define z-val (flash-get-byte z))
-  (sram-set-byte Rd z-val)
+  (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
     (fprintf OUT "LPM R~a,Z[~a]" Rd (num->hex z-val)))
@@ -487,7 +487,7 @@
 (define (avr-LPM-Z-incr Rd)
   (define z (get-z))
   (define z-val (flash-get-byte z))
-  (sram-set-byte Rd z-val)
+  (set-register Rd z-val)
   (inc-z)
   (when debug?
     (print-instruction-uniquely OUT 'LPMRdZ+)
@@ -495,9 +495,9 @@
   (set! clock-cycles 3))
 
 (define (avr-LSR Rd)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (<< Rd-val -1))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (if (! Rd-val 0) (sr-set-C) (sr-clear-C))
   (compute-Z R)
   (sr-clear-N)
@@ -514,9 +514,9 @@
   (set! clock-cycles 1))
 
 (define (avr-MOV Rd Rr)
-  (define Rd-val (sram-get-byte Rd))
-  (define Rr-val (sram-get-byte Rr))
-  (sram-set-byte Rd Rr-val)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (set-register Rd Rr-val)
   (when debug? 
     (print-instruction-uniquely OUT 'MOV)
     (fprintf OUT "MOV R~a,R~a[~a]"
@@ -528,10 +528,10 @@
   (define Rr (* Rr/2 2))
   (define Rd+ (+ Rd 1))
   (define Rr+ (+ Rr 1))
-  (define Rr-val (sram-get-byte Rr))
-  (sram-set-byte Rd Rr-val)
-  (define Rr+-val (sram-get-byte Rr+))
-  (sram-set-byte Rd+ Rr+-val)
+  (define Rr-val (get-register Rr))
+  (set-register Rd Rr-val)
+  (define Rr+-val (get-register Rr+))
+  (set-register Rd+ Rr+-val)
   (when debug?
     (print-instruction-uniquely OUT 'MOVW)
     (fprintf OUT "MOVW R~a:R~a,R~a[~a]:R~a[~a]"  
@@ -542,9 +542,9 @@
   (set! clock-cycles 1))
 
 (define (avr-ORI Rd K)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (ior Rd-val K))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (sr-clear-V)
   (compute-N R)
   (compute-S)
@@ -558,7 +558,7 @@
   (set! clock-cycles 1))
 
 (define (avr-OUT A Rr)
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (io-set A Rr-val)
   (when debug?
     (print-instruction-uniquely OUT 'OUT)
@@ -567,16 +567,16 @@
   (set! clock-cycles 1))
 
 (define (avr-POP Rd)
-  (define Rd-old-val (sram-get-byte Rd))
+  (define Rd-old-val (get-register Rd))
   (define Rd-new-val (stack-pop))
-  (sram-set-byte Rd Rd-new-val)
+  (set-register Rd Rd-new-val)
   (when debug?
     (print-instruction-uniquely OUT 'POP)
     (fprintf OUT "POP R~a" Rd ))
   (set! clock-cycles 2))
 
 (define (avr-PUSH Rd)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (stack-push Rd-val)
   (when debug?
     (print-instruction-uniquely OUT 'PUSH)
@@ -610,10 +610,10 @@
 
 (define (avr-ROR Rd)
   (define C (sr-get-C))
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define low-bit (bit-ref Rd-val 0))
   (define R (ior (<< C 7) (<< Rd-val -1)))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (if (one? low-bit) (sr-set-C) (sr-clear-C))
   (if (one? C) (sr-set-N) (sr-clear-N))
   (if (one? (bitwise-xor (sr-get-N) low-bit))
@@ -626,10 +626,10 @@
   (set! clock-cycles 1))
 
 (define (avr-SBCI Rd K)
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define C (sr-get-C))
   (define R (& (- Rd-val K C) #xff))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (compute-H Rd-val K R 3)
   (compute-V Rd-val K R 7)
   (compute-N R 7)
@@ -654,12 +654,12 @@
 (define (avr-SBIW K Rd-2-bits)
   (define Rd (+ 24 (* Rd-2-bits 2)))
   (define Rd+ (+ Rd 1))
-  (define Rdh (sram-get-byte Rd+))
-  (define Rdl (sram-get-byte Rd))
+  (define Rdh (get-register Rd+))
+  (define Rdl (get-register Rd))
   (define Rd-val (ior (<< Rdh 8) Rdl))
   (define R (& (- Rd-val K) #xffff))
-  (sram-set-byte Rd+ (<< R -8))
-  (sram-set-byte Rd (& R #xff))
+  (set-register Rd+ (<< R -8))
+  (set-register Rd (& R #xff))
   (compute-Z R)
   (if (one? (& (bit-ref R 15)
                (n-bit-ref Rdh 7)))
@@ -680,7 +680,7 @@
 
 (define (avr-ST-X Rr)
   (define x (get-x))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (sram-set-byte x Rr-val)
   (when debug?
     (print-instruction-uniquely OUT 'STXRr)
@@ -689,7 +689,7 @@
 
 (define (avr-ST-X-incr Rr)
   (define x (get-x))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (sram-set-byte x Rr-val)
   (inc-x)
   (when debug?
@@ -699,17 +699,17 @@
 
 (define (avr-STD-Y Rr q)
   (define y (get-y))
-  (sram-set-byte (+ y q) (sram-get-byte Rr))
+  (sram-set-byte (+ y q) (get-register Rr))
   (when debug?
     (print-instruction-uniquely OUT 'STY+qRr)
     (fprintf OUT "ST Y+~a[~a],R~a ; ~a"
              q (num->hex y) Rr
-             (num->hex (sram-get-byte Rr))))
+             (num->hex (get-register Rr))))
   (set! clock-cycles 2))
 
 (define (avr-ST-Y-incr Rr)
   (define y (get-y))
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (sram-set-byte y Rr-val)
   (inc-y)
   (when debug?
@@ -720,16 +720,16 @@
 
 (define (avr-STD-Z Rr q)
   (define z (get-z))
-  (sram-set-byte (+ z q) (sram-get-byte Rr))
+  (sram-set-byte (+ z q) (get-register Rr))
   (when debug?
     (print-instruction-uniquely OUT 'STZ+qRr)
     (fprintf OUT "ST Z+~a,R~a[~a]"
-             q Rr (num->hex (sram-get-byte Rr))))
+             q Rr (num->hex (get-register Rr))))
   (set! clock-cycles 2))
 
 (define (avr-ST-Z-incr Rr)
   (define z (get-z))         
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (sram-set-byte z Rr-val)
   (inc-z)
   (when debug?
@@ -741,7 +741,7 @@
 (define (avr-STS-get-args Rr k)
   (list avr-STS (list Rr k)))
 (define (avr-STS Rr k)
-  (define Rr-val (sram-get-byte Rr))
+  (define Rr-val (get-register Rr))
   (when debug?
     (print-instruction-uniquely OUT 'STS)
     (fprintf OUT "STS (~a),R~a[~a]" (num->hex k) Rr (num->hex Rr-val)))
@@ -751,9 +751,9 @@
 
 (define (avr-SUBI Rd-4-bytes K)
   (define Rd (+ 16 Rd-4-bytes))
-  (define Rd-val (sram-get-byte Rd))
+  (define Rd-val (get-register Rd))
   (define R (& (- Rd-val K) #xff))
-  (sram-set-byte Rd R)
+  (set-register Rd R)
   (compute-H Rd-val K R 3)
   (compute-V Rd-val K R 7)  
   (compute-N R 7)
