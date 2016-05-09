@@ -13,20 +13,3 @@
 
 * Support status
 - ATMega163: small subset of instructions can be simulated
-
-* TODO Next steps
-** TODO Separate fetching and execution
-- fetch: analyzes the instruction and extracts its arguments
-- execute: takes the arguments and executes the instruction
--> we can look at the code without executing it!
--> the code might look less messy
-** TODO Add tests for each assembly instruction
-:LOGBOOK:
-CLOCK: [2016-02-16 Tue 22:17]
-:END:
-** TODO Add a comfortable testsuite: assembly + Racket tests
-** TODO Make a Racket module with nice abstractions instead of one huge file
-** TODO Opcode analysis: what is the Hamming weight of each opcode?
-* DONE FINISHED
-** DONE Keep track of number of passed clock cycles
-** DONE Work out the file-format for saved data
