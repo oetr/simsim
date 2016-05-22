@@ -138,8 +138,8 @@
 ;; get-byte use byte addresses
 (define *flash-address* 0)
 (define (flash-get-byte addr)
-  (save-intermediate-values (bitwise-xor addr *flash-address*))
-  (set! *flash-address* addr)
+  ;; (save-intermediate-values (bitwise-xor addr *flash-address*))
+  ;; (set! *flash-address* addr)
   (define word (flash-get-word (arithmetic-shift addr -1)))
   (if (bitwise-bit-set? addr 0)      
       (arithmetic-shift word -8)
@@ -177,14 +177,14 @@
     (printf "WARNING: address outside RAMEND ~a~n" (num->hex addr))
     (set! address (modulo (+ addr IO-SIZE) RAMEND)))
   (define data (vector-ref SRAM address))
-  (save-intermediate-values address)
+  ;;(save-intermediate-values address)
   (save-intermediate-values data)
-  (save-intermediate-values (bitwise-xor
-                             address *sram-prev-addr*))
-  (save-intermediate-values (bitwise-xor
-                             data *sram-prev-data*))
-  (set! *sram-prev-addr* address)
-  (set! *sram-prev-data* data)
+  ;; (save-intermediate-values (bitwise-xor
+  ;;                            address *sram-prev-addr*))
+  ;; (save-intermediate-values (bitwise-xor
+  ;;                            data *sram-prev-data*))
+  ;;(set! *sram-prev-addr* address)
+  ;;(set! *sram-prev-data* data)
   data)
 (define (sram-set-byte addr data)
   (define address addr)
@@ -192,14 +192,15 @@
     (print "WARNING: address outside RAMEND~n")
     (set! address (modulo (+ addr IO-SIZE) RAMEND)))
   (vector-set! SRAM address data)
-  (save-intermediate-values address)
+  ;;(save-intermediate-values address)
   (save-intermediate-values data)
-  (save-intermediate-values (bitwise-xor
-                             address *sram-prev-addr*))
-  (save-intermediate-values (bitwise-xor
-                             data *sram-prev-data*))
-  (set! *sram-prev-addr* address)
-  (set! *sram-prev-data* data))
+  ;; (save-intermediate-values (bitwise-xor
+  ;;                            address *sram-prev-addr*))
+  ;; (save-intermediate-values (bitwise-xor
+  ;;                            data *sram-prev-data*))
+  ;;(set! *sram-prev-addr* address)
+  ;;(set! *sram-prev-data* data)
+  )
 
 
 (define (get-register reg)
@@ -207,7 +208,7 @@
     (error "ERROR: register higher than 32 ~a~n" 
            (num->hex reg)))
   (define data (vector-ref SRAM reg))
-  (save-intermediate-values reg)
+  ;;(save-intermediate-values reg)
   (save-intermediate-values data)
   data)
 (define (set-register reg val)
@@ -215,20 +216,23 @@
     (error "ERROR: register higher than 32 ~a~n" 
            (num->hex reg)))
   (vector-set! SRAM reg val)
-  (save-intermediate-values reg)
-  (save-intermediate-values val))
+  ;;(save-intermediate-values reg)
+  (save-intermediate-values val)
+  )
 
 (define (sram-set-bit addr i)
   (define data (vector-ref SRAM addr))
   (vector-set! SRAM addr (ior data (<< 1 i)))
-  (save-intermediate-values addr)
-  (save-intermediate-values 1))
+  ;;(save-intermediate-values addr)
+  ;;(save-intermediate-values 1)
+  )
 (define (sram-clear-bit addr i)
   (define data (vector-ref SRAM addr))
-  (vector-set! SRAM addr (& (sram-get-byte addr)
-                         (bitwise-not (<< 1 i))))
-  (save-intermediate-values addr)
-  (save-intermediate-values 0))
+  (vector-set! SRAM addr (& (vector-ref SRAM addr)
+                            (bitwise-not (<< 1 i))))
+  ;;(save-intermediate-values addr)
+  ;;(save-intermediate-values 0)
+  )
 (define (sram-get-bit addr i)
   (& (<< (vector-ref SRAM addr) (- i)) 1))
 ;; map register file
@@ -401,8 +405,8 @@
 
 (define (reset-machine (filename #f) #:keep-flash? (keep-flash? #f))
   (unless keep-flash?
-    (set! FLASH (make-vector FLASHEND #x00)))
-  (set! SRAM (make-vector RAMEND #x00))
+    (for ([i FLASHEND]) (vector-set! FLASH i 0)))
+  ;;(set! SRAM (make-vector RAMEND #x00))
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
   (set! PREVIOUS-CLOCK-CYCLE #f)
@@ -424,8 +428,14 @@
         (when (and (port? OUT) 
                    (not (port-closed? OUT))
                    (not (eq? OUT (current-output-port))))
-          (close-output-port OUT))
-        (set! OUT (current-output-port)))))
+          (close-output-port OUT)
+          (set! OUT (current-output-port))))))
+
+(define (close-if-file a-port)
+  (when (and (port? OUT) 
+             (not (port-closed? OUT))
+             (not (eq? OUT (current-output-port))))
+    (close-output-port OUT)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 3) opcode interpreter
