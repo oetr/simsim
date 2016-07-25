@@ -607,6 +607,15 @@
              (num->hex R)))
   (set! clock-cycles 1))
 
+(define (avr-IN A Rd)
+  (define A-val (io-get A))
+  (set-register Rd A-val)
+  (when debug?
+    (print-instruction-uniquely OUT 'IN)
+    (fprintf OUT "IN R~a,A[~a] ; [~a]" 
+             Rd (num->hex A) (num->hex A-val)))
+  (set! clock-cycles 1))
+
 (define (avr-OUT A Rr)
   (define Rr-val (get-register Rr))
   (io-set A Rr-val)
@@ -984,7 +993,7 @@
 (define opcodes-6-bit-A-Rd
   (make-hash
    (list
-    (list #xB000 'IN 'avr-IN 2 #f)
+    (list #xB000 'IN avr-IN 2 #f)
     (list #xB800 'OUT avr-OUT 2 #f))))
 ;; opcodes with a relative 12-bit address k
 (define opcodes-12-bit-k

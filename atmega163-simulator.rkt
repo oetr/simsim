@@ -98,8 +98,8 @@
       (regexp-match
        #px"([0-9a-f]+).+?([gl]).+?(\\.text|\\.bss)\t[0-9a-f]+ (.+)$" l))
     (when (list? a-match)
-      (define gl (list-ref a-match 2))
-      (define type (list-ref a-match 3))
+      (define gl     (list-ref a-match 2))
+      (define type   (list-ref a-match 3))
       (define symbol (list-ref a-match 4))
       (define addr (hex->num (list-ref a-match 1)))
       (when (string=? type ".text")
@@ -108,6 +108,7 @@
       ;; are shifted, shift them back here
       (when (string=? type ".bss")
         (set! addr (- addr #x800000)))
+      ;;(printf "~a - ~a - ~a - ~a~n" gl type symbol addr)
       (set! addrs (cons (cons addr   symbol) addrs))
       (set! syms  (cons (cons symbol addr)   syms))))
   (set! ADDRESS-TABLE (make-hash addrs))
