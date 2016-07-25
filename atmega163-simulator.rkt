@@ -95,14 +95,21 @@
   (define syms empty)
   (for ([l syms-lines])
     (define a-match
-      (regexp-match #px"([0-9a-f]+).+?([gl]).+?\\.text\t[0-9a-f]+ (.+)$" l))
+      (regexp-match
+       #px"([0-9a-f]+).+?([gl]).+?(\\.text|\\.bss)\t[0-9a-f]+ (.+)$" l))
     (when (list? a-match)
-      (define addr (/ (hex->num (cadr a-match)) 2))
-      (define symbol (cadddr a-match))
-      (set! addrs (cons (cons addr symbol)
-                        addrs))
-      (set! syms (cons (cons symbol addr)
-                       syms))))
+      (define gl (list-ref a-match 2))
+      (define type (list-ref a-match 3))
+      (define symbol (list-ref a-match 4))
+      (define addr (hex->num (list-ref a-match 1)))
+      (when (string=? type ".text")
+        (set! addr (/ addr 2)))
+      ;; addresses of static variables in the .bss section
+      ;; are shifted, shift them back here
+      (when (string=? type ".bss")
+        (set! addr (- addr #x800000)))
+      (set! addrs (cons (cons addr   symbol) addrs))
+      (set! syms  (cons (cons symbol addr)   syms))))
   (set! ADDRESS-TABLE (make-hash addrs))
   (set! SYMBOL-TABLE (make-hash syms)))
 
