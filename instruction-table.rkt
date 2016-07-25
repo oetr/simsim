@@ -166,6 +166,7 @@
     (MUL 52 "MUL" 2)
     (MUL 52 "MUL Rd,Rr" 2)
 
+    (OR 520 "OR" 1)
     (ANDI 53 "ANDI" 1)
     (ANDI 53 "ANDI Rd,K" 1)
 

@@ -2,32 +2,46 @@
 (define clock-cycles 0)
 (define symbol-need-to-print? #t)
 
-(define print-intermediate-values? #t)
-(define INTERMEDIATE-VALUES '())
+(define save-intermediate-values? #f)
+(define INTERMEDIATE-VALUES-N 50000)
+(define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
+(define INTERMEDIATE-VALUES-INDEX 0)
 (define SAVED-VALS '())
 (define SAVED-OPCODE #f)
 (define SAVED-PC #f)
 (define WAS-CALL? #f)
 
-
 (define (save-intermediate-values data)
-  (when symbol-need-to-print?
-    (set! INTERMEDIATE-VALUES (cons data INTERMEDIATE-VALUES))))
-    ;; (set! SAVED-VALS (cons data SAVED-VALS))
-    ;; (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
-    ;;   (when SAVED-PC
-    ;;     (printf "~a: ~a~n" SAVED-PC SAVED-VALS))
-    ;;   (set! SAVED-VALS '())
-    ;;   (define instr (vector-ref PROCEDURES PC))
-    ;;   (when instr
-    ;;     (set! SAVED-OPCODE (opcode-info-opcode instr))
-    ;;     (set! SAVED-PC (- PC 1))))
-    ;; (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)))
+  (when save-intermediate-values?
+    (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
+                 (cons data SAVED-PC))
+    (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1))
+    ;;(set! INTERMEDIATE-VALUES (cons  INTERMEDIATE-VALUES))
+    (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
+      (define instr (vector-ref PROCEDURES PC))
+      (when instr
+        (set! SAVED-PC (- PC 1))))
+    (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)))
+
+(define (intermediate-values->file file-name
+                                   #:exists (exists 'append))
+  (define a-file (open-output-file (expand-user-path file-name)
+                                   #:exists exists))
+  (define (print-with-separator fn (sep ","))
+    (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
+      (fprintf a-file "~a"
+               (fn (vector-ref INTERMEDIATE-VALUES i)))
+      (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
+        (fprintf a-file "~a" sep)))
+    (fprintf a-file "~n"))
+  (print-with-separator car)
+  (print-with-separator cdr)
+  (close-output-port a-file))
 
 
 ;; (define (save-intermediate-values data)
 ;;   ;;  (printf "~a ** ~a: ~a-~a ; ~a,~a~n" SAVED-PC PC PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE) symbol-need-to-print?)
-;;   (when symbol-need-to-print?
+;;   (when save-intermediate-values?
 ;;     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
 ;;       ;; save accumulated data
 ;;       (when SAVED-PC
@@ -49,21 +63,6 @@
 ;;     (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)
 ;;     (set! SAVED-VALS (cons data SAVED-VALS))))
 
-(define (intermediate-values->file reversed-vals file-name #:exists (exists 'append))
-;;  (printf "~a~n" (length INTERMEDIATE-VALUES))
-  (define a-file (open-output-file (expand-user-path file-name)
-                                   #:exists exists))
-  (define vals (reverse reversed-vals))
-  (define (print-with-separator a-list (sep ","))
-    (define l (length a-list))
-    (for ([v a-list]
-          [i l])
-      (fprintf a-file "~a" v)
-      (when (< i (- l 1))
-        (fprintf a-file "~a" sep)))
-    (fprintf a-file "~n"))
-  (print-with-separator vals)
-  (close-output-port a-file))
 
 ;; (define (intermediate-values->file reversed-vals file-name #:exists (exists 'append))
 ;; ;;  (printf "~a~n" (apply + (map length INTERMEDIATE-VALUES)))
@@ -209,6 +208,24 @@
     (fprintf OUT "ADIW R~a:R~a[~a],K[~a] ; ~a"
              Rd Rd+ (num->hex Rd-val) (num->hex K) (num->hex R)))
   (set! clock-cycles 2))
+
+(define (avr-OR Rd Rr)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (define R (ior Rd-val Rr-val))
+  (set-register Rd R)
+  (sr-clear-V)
+  (compute-N R)
+  (compute-S)
+  (compute-Z R)
+  (when debug?
+    (print-instruction-uniquely OUT 'OR)
+    (fprintf OUT "OR R~a[~a],R~a[~a] ; ~a" 
+             Rd (num->hex Rd-val) 
+             Rr (num->hex Rr-val)
+             (num->hex R)))
+  (set! clock-cycles 1))
+
 
 (define (avr-ANDI Rd-16 K)
   (define Rd (+ 16 Rd-16))
@@ -751,6 +768,16 @@
     (fprintf OUT "ST Y+,R~a[~a]" Rr (num->hex Rr-val)))
   (set! clock-cycles 2))
 
+(define (avr-SWAP Rd)
+  (define Rd-val (get-register Rd))
+  (define R (ior (&<< Rd-val #x0f 4)
+                 (&<< Rd-val #xf0 -4)))
+  (set-register Rd R)
+  (when debug?
+    (print-instruction-uniquely OUT 'SWAP)
+    (fprintf OUT "SWAP R~a[~a] ; ~a"
+             Rd (num->hex Rd-val) (num->hex R)))
+  (set! clock-cycles 1))
 
 (define (avr-STD-Z Rr q)
   (define z (get-z))
@@ -858,7 +885,7 @@
     (list #x2400 'EOR avr-EOR 2 #f)
     (list #x2C00 'MOV avr-MOV 2 #f)
     (list #x9C00 'MUL 'avr-MUL 2 #f)
-    (list #x2800 'OR 'avr-OR 2 #f)
+    (list #x2800 'OR avr-OR 2 #f)
     (list #x0800 'SBC 'avr-SBC 2 #f)
     (list #x1800 'SUB 'avr-SUB 2 #f))))
 ;; opcode with a single register Rd as operand
@@ -894,7 +921,7 @@
     (list #x9209 'ST-Y-incr avr-ST-Y-incr 2 #f)
     (list #x9202 'ST-Z-decr 'avr-ST-Z-decr 2 #f)
     (list #x9201 'ST-Z-incr avr-ST-Z-incr 2 #f)
-    (list #x9402 'SWAP 'avr-SWAP 2 #f))))
+    (list #x9402 'SWAP avr-SWAP 2 #f))))
 ;; opcodes with a register Rd and a constant data K
 (define opcodes-Rd-K
   (make-hash

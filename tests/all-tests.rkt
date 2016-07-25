@@ -91,3 +91,9 @@
 ;; ST X+,Rr
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (prepare-machine "startTestSTXRr")
+
+
+(prepare-machine "cipher_e_xfrm")
+(set! debug? #t)
+(set-register 28 #xff)
+(go-address (lookup-symbol "cipher_e_xfrm_end"))

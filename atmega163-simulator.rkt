@@ -1,4 +1,4 @@
-(require racket racket/main rackunit)
+;;(require racket racket/main rackunit)
 ;;(load "instruction-table.rkt")
 ;; Develop an abstract machine that is loaded with a hex /elf file,
 ;; is given a start address, and can simulate the execution
@@ -411,7 +411,9 @@
   (set! CURRENT-CLOCK-CYCLE 0)
   (set! PREVIOUS-CLOCK-CYCLE #f)
   (set! SAVED-PC #f)
-  (set! INTERMEDIATE-VALUES '())
+  ;;(set! INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
+  (set! INTERMEDIATE-VALUES-INDEX 0)
+  (set! SAVED-VALS '())
   (set! PC 0)
   (set! *flash-address* 0)
   (set! *sram-prev-data* 0)
