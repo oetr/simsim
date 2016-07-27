@@ -108,7 +108,6 @@
       ;; are shifted, shift them back here
       (when (string=? type ".bss")
         (set! addr (- addr #x800000)))
-      ;;(printf "~a - ~a - ~a - ~a~n" gl type symbol addr)
       (set! addrs (cons (cons addr   symbol) addrs))
       (set! syms  (cons (cons symbol addr)   syms))))
   (set! ADDRESS-TABLE (make-hash addrs))
@@ -116,8 +115,42 @@
 
 (define (lookup-address addr)
   (hash-ref ADDRESS-TABLE addr #f))
-(define (lookup-symbol a-symbol)
-  (hash-ref SYMBOL-TABLE a-symbol #f))
+
+(define (lookup-symbol a-symbol (approximate-matching? #f)
+                       (closest-to #f))
+  (define syms (list a-symbol))
+  ;; go through all extracted symbols and match approximate name
+  (define count 0)
+  (when approximate-matching?
+    (set! syms (list))
+    (for ([(symbol addr) SYMBOL-TABLE])
+      (define a-match (regexp-match (~a a-symbol ".*") symbol))
+      (when a-match
+        (set! syms (cons (car a-match) syms))
+        (set! count (+ count 1)))))
+  (define results
+    (sort (map (lambda (x)
+                 (hash-ref SYMBOL-TABLE x #f)) syms)
+          <))
+  (define r #f)
+  (if (zero? count)
+      ;;(car results)
+      (set! r (car results))
+      (if closest-to
+          (let loop ([results results]
+                     [prev #f])
+            (if (empty? results)
+                (set! r prev)
+                (if (<= closest-to (car results))
+                    (if (and prev
+                             (>= (- closest-to prev)
+                                 (- (car results) closest-to)))
+                        (set! r prev)
+                        (set! r (car results)))
+                    (loop (cdr results) (car results)))))
+          (set! r (car results))))
+  r)
+
 (define (print-symbols)
   (define mapping (sort (hash->list SYMBOL-TABLE) 
                         (lambda (a b) (string<? (car a) (car b)))))

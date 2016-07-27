@@ -167,7 +167,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 16-bit instructions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (avr-NOP . args) avr-NOP)
+(define (avr-NOP . args)
+  (when debug?
+    (print-instruction-uniquely OUT 'NOP)
+    (fprintf OUT "NOP"))
+  (set! clock-cycles 1))
+
 (define (avr-ADC Rd Rr)
   (define Rd-val (get-register Rd))
   (define Rr-val (get-register Rr))
@@ -205,6 +210,20 @@
              Rd (num->hexb Rd-val)
              Rr (num->hexb Rr-val)
              (num->hexb R)))
+  (set! clock-cycles 1))
+
+(define (avr-AND Rd Rr)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (define R (& Rd-val Rr-val))
+  (set-register Rd R)
+  (sr-clear-V)
+  (compute-N R 7)
+  (compute-S)
+  (compute-Z R)
+  (when debug?
+    (print-instruction-uniquely OUT 'AND)
+    (fprintf OUT "AND R~a[~a],R~a[~a]" Rd (num->hex Rd-val) Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
 
@@ -250,6 +269,45 @@
              (num->hex R)))
   (set! clock-cycles 1))
 
+
+(define (avr-SBC Rd Rr)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (define C (sr-get-C))
+  (define R (& (- Rd-val Rr-val C) #xff))
+  (set-register Rd R)
+  (compute-H Rd-val Rr R 3)
+  (compute-V Rd-val Rr R 7)
+  (compute-N R 7)
+  (compute-S)
+  (unless (zero? R) (sr-clear-Z))
+  (compute-C Rd-val Rr R 7)
+  (when debug?
+    (print-instruction-uniquely OUT 'SBC)
+    (fprintf OUT "SBC R~a[~a],R~a[~a],C[~a] ; ~a"
+             Rd (num->hex Rd-val) 
+             Rr (num->hex Rr-val) C
+             (num->hex R)))
+  (set! clock-cycles 1))
+
+(define (avr-SUB Rd Rr)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (define R (& (- Rd-val Rr-val) #xff))
+  (sram-set-byte Rd R)
+  (compute-H Rd-val Rr-val R)
+  (compute-V Rd-val Rr-val R)
+  (compute-N R)
+  (compute-S)
+  (compute-Z R)
+  (compute-C Rd-val Rr-val R)
+  (when debug?
+    (print-instruction-uniquely OUT 'SUB)
+    (fprintf OUT "SUB R~a[~a],R~a[~a] ; ~a" 
+             Rd (num->hex Rd-val) 
+             Rr (num->hex Rr-val)
+             (num->hex R)))
+  (set! clock-cycles 1))
 
 (define (avr-ANDI Rd-16 K)
   (define Rd (+ 16 Rd-16))
@@ -597,6 +655,23 @@
              Rd Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
+(define (avr-MUL Rd Rr)
+  (define Rd-val (get-register Rd))
+  (define Rr-val (get-register Rr))
+  (define R (* Rd-val Rr-val))
+  ;; save the result in R1:R0
+  (set-register 0 (& R #xff))
+  (set-register 1 (<<& R -8 #xff))
+  (compute-Z R)
+  (if (! R 15) (sr-set-C) (sr-clear-C))
+  (when debug?
+    (print-instruction-uniquely OUT 'MUL)
+    (fprintf OUT "MUL R~a[~a],R~a[~a] ; ~a"
+             Rd (num->hex Rd-val) 
+             Rr (num->hex Rr-val) 
+             (num->hex R)))
+  (set! clock-cycles 2))
+
 (define (avr-MOVW Rd/2 Rr/2)
   (define Rd (* Rd/2 2))
   (define Rr (* Rr/2 2))
@@ -708,7 +783,8 @@
     (fprintf OUT "ROR R~a[~a] ; ~a" Rd (num->hex Rd-val) (num->hex R)))
   (set! clock-cycles 1))
 
-(define (avr-SBCI Rd K)
+(define (avr-SBCI Rd-4-bytes K)
+  (define Rd (+ Rd-4-bytes 16))
   (define Rd-val (get-register Rd))
   (define C (sr-get-C))
   (define R (& (- Rd-val K C) #xff))
@@ -911,16 +987,16 @@
    (list
     (list #x1C00 'ADC avr-ADC 2 #f)
     (list #x0C00 'ADD avr-ADD 2 #f)
-    (list #x2000 'AND 'avr-AND 2 #f)
+    (list #x2000 'AND avr-AND 2 #f)
     (list #x1400 'CP avr-CP 2 #f)
     (list #x0400 'CPC avr-CPC 2 #f)
     (list #x1000 'CPSE avr-CPSE 2 #f)
     (list #x2400 'EOR avr-EOR 2 #f)
     (list #x2C00 'MOV avr-MOV 2 #f)
-    (list #x9C00 'MUL 'avr-MUL 2 #f)
+    (list #x9C00 'MUL avr-MUL 2 #f)
     (list #x2800 'OR avr-OR 2 #f)
-    (list #x0800 'SBC 'avr-SBC 2 #f)
-    (list #x1800 'SUB 'avr-SUB 2 #f))))
+    (list #x0800 'SBC avr-SBC 2 #f)
+    (list #x1800 'SUB avr-SUB 2 #f))))
 ;; opcode with a single register Rd as operand
 (define opcodes-Rd
   (make-hash
