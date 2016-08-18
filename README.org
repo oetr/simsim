@@ -1,15 +1,15 @@
 * Objectives 
-- Simulate code execution of the ATMega163 microcontroller.
-- Keep track of current clock cycles.
+- Simulate code execution of the ATMega163 microcontroller
+- Print execution trace
+- Print processed data for leakage analysis
 
-* Running instructions
-- you need a hex-file compiled for an atmega163
-- you need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
-- start Racket
-- open the file
-- load hex and elf files
-- run 
-- for examples, see the test directory
+* Prerequisites
+- You need a hex-file compiled for an atmega163
+- You need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
+
+* Running the tests
+$ cd tests/
+$ racket -f all-tests.rkt
 
 * Support status
 - ATMega163: small subset of instructions can be simulated
