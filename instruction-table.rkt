@@ -199,11 +199,12 @@
   (vector-ref uniqueIDs id))
 
 (define (print-instruction-uniquely port unique-instr-name
-                                    (duration-dynamic? #f))
+                                    (ccs-when-dynamic #f))
   (define instr (get-instr unique-instr-name))
   (define unique-name (get-unique-name (instr-id instr)))
-  (when duration-dynamic? (set! clock-cycles duration-dynamic?))
+  (define ccs (instr-ccs instr))
+  (when ccs-when-dynamic (set! ccs ccs-when-dynamic))
   (fprintf port "~a|~a|~a|~a|" 
-           unique-name (instr-ccs instr)
+           unique-name ccs
            (instr-name instr) (instr-id instr)))
 ;;  )
