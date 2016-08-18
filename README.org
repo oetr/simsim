@@ -8,8 +8,11 @@
 - You need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
 
 * Running the tests
+#+BEGIN_SRC shell
 $ cd tests/
 $ racket -f all-tests.rkt
+#+END_SRC
+
 
 * Support status
 - ATMega163: small subset of instructions can be simulated
