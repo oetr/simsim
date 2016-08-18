@@ -8,7 +8,7 @@
 (define INTERMEDIATE-VALUES-INDEX 0)
 (define SAVED-VALS '())
 (define SAVED-OPCODE #f)
-(define SAVED-PC #f)
+(define SAVED-PC 0)
 (define WAS-CALL? #f)
 
 (define (subvector v from to)
@@ -41,7 +41,7 @@
   ;;                   vec)) sep))
   ;;   (display str-all-cars a-file)
   ;;   (newline a-file))
-   (define (print-with-separator fn (sep ","))
+  (define (print-with-separator fn (sep ","))
     (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
       (fprintf a-file "~a"
                (fn (vector-ref INTERMEDIATE-VALUES i)))
@@ -371,6 +371,21 @@
              Rd (num->hex Rd-val)
              b (sr-get-T)))
   (set! clock-cycles 1))
+
+(define (avr-SBRS Rr b)
+  (define Rr-val (get-register Rr))
+  (define b-val (bit-ref Rr-val b))
+  (when (one? b-val)
+    (define next-instr (vector-ref PROCEDURES PC))
+    (when (opcode-info-32-bit? next-instr)
+      (inc-pc)
+      (set! clock-cycles (+ clock-cycles 1)))
+    (inc-pc)
+    (set! clock-cycles (+ clock-cycles 1)))
+  (set! clock-cycles (+ clock-cycles 1))
+  (when debug?
+    (print-instruction-uniquely OUT 'SBRS clock-cycles)
+    (fprintf OUT "SBRS R~a[~a],b[~a] ; ~a" Rr Rr-val b (one? b-val))))
 
 (define (avr-CBI A b)
   (io-clear-bit A b)
@@ -1048,7 +1063,7 @@
    (list
     (list #xFA00 'BST avr-BST 2 #f)
     (list #xFC00 'SBRC 'avr-SBRC 2 #f)
-    (list #xFE00 'SBRS 'avr-SBRS 2 #f))))
+    (list #xFE00 'SBRS avr-SBRS 2 #f))))
 ;; opcodes with a relative 7-bit address k and a register bit number b
 (define opcodes-7-bit-k-b
   (make-hash

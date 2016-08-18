@@ -113,8 +113,11 @@
    (cons 'SBCI  (instr 30 "SBCI" 1))
    (cons 'SBCI  (instr 30 "SBCI Rd,K" 1))
 
-   (cons 'SBRC  (instr 31 "SBRC" (list 1 2)))
-   (cons 'SBRC  (instr 31 "SBRC Rr,b" (list 1 2)))
+   (cons 'SBRC  (instr 31 "SBRC" (list 1 2 3)))
+   (cons 'SBRC  (instr 31 "SBRC Rr,b" (list 1 2 3)))
+
+   (cons 'SBRS  (instr 3100 "SBRS" (list 1 2 3)))
+   (cons 'SBRS  (instr 3100 "SBRS Rr,b" (list 1 2 3)))
 
    (cons 'BRBC  (instr 32 "BRBC" (list 1 2)))
    (cons 'BRNE  (instr 3200 "BRNE" (list 1 2)))
