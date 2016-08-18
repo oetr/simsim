@@ -4,6 +4,7 @@
 - Print processed data for leakage analysis
 
 * Prerequisites
+- Download Racket from https://racket-lang.org
 - You need a hex-file compiled for an atmega163
 - You need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
 
@@ -12,7 +13,6 @@
 $ cd tests/
 $ racket -f all-tests.rkt
 #+END_SRC
-
 
 * Support status
 - ATMega163: small subset of instructions can be simulated
