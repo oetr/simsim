@@ -11,13 +11,15 @@
 (define SAVED-PC 0)
 (define WAS-CALL? #f)
 
+(struct saved-value (data pc cc))
+
 (define (subvector v from to)
   (vector-drop (vector-take v to) from))
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
     (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
-                 (cons data SAVED-PC))
+                 (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
     (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1))
     ;;(set! INTERMEDIATE-VALUES (cons  INTERMEDIATE-VALUES))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
@@ -26,42 +28,28 @@
         (set! SAVED-PC (- PC 1))))
     (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)))
 
+(define (print-with-separator a-file fn (sep ","))
+  (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
+    (fprintf a-file "~a"
+             (fn (vector-ref INTERMEDIATE-VALUES i)))
+    (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
+      (fprintf a-file "~a" sep)))
+  (fprintf a-file "~n"))
+
 (define (intermediate-values->file file-name
                                    #:exists (exists 'append))
   (define a-file (open-output-file (expand-user-path file-name)
                                    #:exists exists))
-  ;; (define vec (subvector INTERMEDIATE-VALUES 0
-  ;;                        INTERMEDIATE-VALUES-INDEX))
-  ;; (define (print-with-separator fn (sep ","))
-  ;;   (define str-all-cars
-  ;;     (string-join
-  ;;      (vector->list
-  ;;       (vector-map (lambda (a-pair)
-  ;;                     (format "~a" (fn a-pair)))
-  ;;                   vec)) sep))
-  ;;   (display str-all-cars a-file)
-  ;;   (newline a-file))
-  (define (print-with-separator fn (sep ","))
-    (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
-      (fprintf a-file "~a"
-               (fn (vector-ref INTERMEDIATE-VALUES i)))
-      (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
-        (fprintf a-file "~a" sep)))
-    (fprintf a-file "~n"))
-  (print-with-separator car)
-  (print-with-separator cdr)
+  (print-with-separator a-file saved-value-data)
+  (print-with-separator a-file saved-value-pc)
+  (print-with-separator a-file saved-value-cc)
   (close-output-port a-file))
 
 (define (write-intermediate-values a-file #:exists (exists 'append))
-  (define (print-with-separator fn (sep ","))
-    (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
-      (fprintf a-file "~a"
-               (fn (vector-ref INTERMEDIATE-VALUES i)))
-      (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
-        (fprintf a-file "~a" sep)))
-    (fprintf a-file "~n"))
-  (print-with-separator car)
-  (print-with-separator cdr))
+  (print-with-separator a-file saved-value-data)
+  (print-with-separator a-file saved-value-pc)
+  (print-with-separator a-file saved-value-cc))
+
 
 ;; (define (save-intermediate-values data)
 ;;   ;;  (printf "~a ** ~a: ~a-~a ; ~a,~a~n" SAVED-PC PC PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE) symbol-need-to-print?)
@@ -753,7 +741,7 @@
   (stack-push Rd-val)
   (when debug?
     (print-instruction-uniquely OUT 'PUSH)
-    (fprintf OUT "PUSH R~a[~a]" Rd Rd-val))
+    (fprintf OUT "PUSH R~a[~a(~a)]" Rd Rd-val (num->hex Rd-val)))
   (set! clock-cycles 2))
 
 (define (avr-RCALL k-unsigned)

@@ -124,13 +124,14 @@
   (when approximate-matching?
     (set! syms (list))
     (for ([(symbol addr) SYMBOL-TABLE])
-      (define a-match (regexp-match (~a a-symbol ".*") symbol))
+      (define a-match (regexp-match (~a a-symbol "[0-9]*") symbol))
       (when a-match
         (set! syms (cons (car a-match) syms))
         (set! count (+ count 1)))))
   (define results
-    (sort (map (lambda (x)
-                 (hash-ref SYMBOL-TABLE x #f)) syms)
+    (sort (filter identity
+                  (map (lambda (x)
+                         (hash-ref SYMBOL-TABLE x #f)) syms))
           <))
   (define r #f)
   (if (zero? count)
@@ -256,11 +257,18 @@
   data)
 (define (set-register reg val)
   (when (>= reg 32)
-    (error "ERROR: register higher than 32 ~a~n" 
+    (error 'set-register
+           "ERROR: register higher than 32 ~a~n" 
            (num->hex reg)))
   (vector-set! SRAM reg val)
   ;;(save-intermediate-values reg)
   (save-intermediate-values val)
+  )
+
+;; set two consecutive registers to a word
+(define (set-register-w reg val)
+  (set-register reg (& val #xff)) ;; low value
+  (set-register (+ reg 1) (<< val -8)) ;; high value
   )
 
 (define (sram-set-bit addr i)
