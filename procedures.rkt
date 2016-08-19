@@ -35,19 +35,17 @@
       (fprintf a-file "~a" sep)))
   (fprintf a-file "~n"))
 
-(define (intermediate-values->file file-name
-                                   #:exists (exists 'append))
-  (define a-file (open-output-file (expand-user-path file-name)
-                                   #:exists exists))
-  (print-with-separator a-file saved-value-data)
-  (print-with-separator a-file saved-value-pc)
-  (print-with-separator a-file saved-value-cc)
-  (close-output-port a-file))
-
 (define (write-intermediate-values a-file #:exists (exists 'append))
   (print-with-separator a-file saved-value-data)
   (print-with-separator a-file saved-value-pc)
   (print-with-separator a-file saved-value-cc))
+
+(define (intermediate-values->file file-name
+                                   #:exists (exists 'append))
+  (define a-file (open-output-file (expand-user-path file-name)
+                                   #:exists exists))
+  (write-intermediate-values a-file #:exists exists)
+  (close-output-port a-file))
 
 ;; 2 bit register id (R24 R26 R28 R30)
 (define mask-Rd-2 #x0030)
