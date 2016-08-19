@@ -21,7 +21,6 @@
     (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
                  (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
     (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1))
-    ;;(set! INTERMEDIATE-VALUES (cons  INTERMEDIATE-VALUES))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
       (define instr (vector-ref PROCEDURES PC))
       (when instr
@@ -49,51 +48,6 @@
   (print-with-separator a-file saved-value-data)
   (print-with-separator a-file saved-value-pc)
   (print-with-separator a-file saved-value-cc))
-
-
-;; (define (save-intermediate-values data)
-;;   ;;  (printf "~a ** ~a: ~a-~a ; ~a,~a~n" SAVED-PC PC PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE) symbol-need-to-print?)
-;;   (when save-intermediate-values?
-;;     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
-;;       ;; save accumulated data
-;;       (when SAVED-PC
-;;         (set! INTERMEDIATE-VALUES
-;;               (cons (append (list PREVIOUS-CLOCK-CYCLE
-;;                                   (- CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
-;;                                   SAVED-PC
-;;                                   SAVED-OPCODE
-;;                                   (length SAVED-VALS))
-;;                             SAVED-VALS)
-;;                     INTERMEDIATE-VALUES)))
-;; ;;      (printf "~a: ~a~n" SAVED-PC SAVED-VALS)
-;;       ;; clear accumulated data and set anew
-;;       (set! SAVED-VALS '())
-;;       (define instr (vector-ref PROCEDURES PC))
-;;       (when instr
-;;         (set! SAVED-OPCODE (opcode-info-opcode instr))
-;;         (set! SAVED-PC (- PC 1))))
-;;     (set! PREVIOUS-CLOCK-CYCLE CURRENT-CLOCK-CYCLE)
-;;     (set! SAVED-VALS (cons data SAVED-VALS))))
-
-
-;; (define (intermediate-values->file reversed-vals file-name #:exists (exists 'append))
-;; ;;  (printf "~a~n" (apply + (map length INTERMEDIATE-VALUES)))
-;;   (define a-file (open-output-file (expand-user-path file-name)
-;;                                    #:exists exists))
-;;   (define vals (reverse reversed-vals))
-;;   ;; TODO: get rid of duplicates
-;;   ;; save all in a file
-;;   (define (print-with-separator a-list (sep ","))
-;;     (define l (length a-list))
-;;     (for ([v a-list]
-;;           [i l])
-;;       (fprintf a-file "~a" v)
-;;       (when (< i (- l 1))
-;;         (fprintf a-file "~a" sep)))
-;;     (fprintf a-file "~n"))
-;;   (for ([line vals])
-;;     (print-with-separator line))
-;;   (close-output-port a-file))
 
 ;; 2 bit register id (R24 R26 R28 R30)
 (define mask-Rd-2 #x0030)
@@ -946,7 +900,6 @@
 ;; or execute, when second arg is empty
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (avr-CALL-get-args kh kl)
-  ;;  (printf "CALL (~a), (~a)~n" kh kl)
   (list avr-CALL (list (ior (<< kh 16) kl))))
 (define (avr-CALL k)
   (stack-push-word (+ PC 1))
