@@ -3,24 +3,66 @@
 (define symbol-need-to-print? #t)
 
 (define save-intermediate-values? #f)
-(define INTERMEDIATE-VALUES-N 50000)
+(define save-hamming-distance? #f)
+(define NOF-INTERMEDIATE-VALUES 3)
+(define INTERMEDIATE-VALUES-N 100000)
+(define INTERMEDIATE-VALUES-BYTES 2)
 (define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
 (define INTERMEDIATE-VALUES-INDEX 0)
-(define SAVED-VALS '())
 (define SAVED-OPCODE #f)
 (define SAVED-PC 0)
 (define WAS-CALL? #f)
+
+(define *saved-value-data* (make-bytes
+                            (* INTERMEDIATE-VALUES-N
+                               INTERMEDIATE-VALUES-BYTES)))
+(define *saved-value-pc* (make-bytes
+                          (* INTERMEDIATE-VALUES-N
+                             INTERMEDIATE-VALUES-BYTES)))
+(define *saved-value-cc* (make-bytes
+                          (* INTERMEDIATE-VALUES-N
+                             INTERMEDIATE-VALUES-BYTES)))
 
 (struct saved-value (data pc cc))
 
 (define (subvector v from to)
   (vector-drop (vector-take v to) from))
 
+(define (uint->bytes uint n-bytes)
+  ;; check: make sure n-bytes is big enough
+  (when (> (integer-length uint) (* n-bytes 8))
+    (error
+     'uint->bytes
+     "Provided integer ~a is bigger than requested byte width ~a~n"
+     uint n-bytes))
+  (define num uint)
+  (define result (make-bytes n-bytes))
+  ;; write MSB first, process LSB first
+  (for ([i n-bytes])
+    (bytes-set! result (- n-bytes i 1) (bitwise-and num #xFF))
+    (set! num (arithmetic-shift num -8)))
+  result)
+
+(define (save-values! data pc cc)
+  ;; convert integers to bytes
+  (define data-bytes (uint->bytes data INTERMEDIATE-VALUES-BYTES))
+  (define pc-bytes (uint->bytes pc INTERMEDIATE-VALUES-BYTES))
+  (define cc-bytes (uint->bytes cc INTERMEDIATE-VALUES-BYTES))
+  ;; and save bytes
+  (bytes-copy! *saved-value-data* INTERMEDIATE-VALUES-INDEX
+               data-bytes)
+  (bytes-copy! *saved-value-pc* INTERMEDIATE-VALUES-INDEX
+               pc-bytes)
+  (bytes-copy! *saved-value-cc* INTERMEDIATE-VALUES-INDEX
+               cc-bytes))
+
 (define (save-intermediate-values data)
   (when save-intermediate-values?
-    (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
-                 (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
-    (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1))
+    (save-values! data SAVED-PC CURRENT-CLOCK-CYCLE)
+    ;; (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
+    ;;              (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
+    (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX
+                                       INTERMEDIATE-VALUES-BYTES))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
       (define instr (vector-ref PROCEDURES PC))
       (when instr
@@ -30,7 +72,7 @@
 (define (print-with-separator a-file fn (sep ","))
   (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
     (fprintf a-file "~a"
-             (fn (vector-ref INTERMEDIATE-VALUES i)))
+             (fn (INTERMEDIATE-VALUES-INDEXvector-ref INTERMEDIATE-VALUES i)))
     (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
       (fprintf a-file "~a" sep)))
   (fprintf a-file "~n"))
@@ -45,6 +87,21 @@
   (define a-file (open-output-file (expand-user-path file-name)
                                    #:exists exists))
   (write-intermediate-values a-file #:exists exists)
+  (close-output-port a-file))
+
+(define (write-header a-file . args)
+  (for ([num args]) (write-bytes (uint->bytes num 4) a-file)))
+
+(define (write-intermediate-values-bytes a-file)
+  (write-bytes *saved-value-data* a-file 0 INTERMEDIATE-VALUES-INDEX)
+  (write-bytes *saved-value-pc* a-file 0 INTERMEDIATE-VALUES-INDEX)
+  (write-bytes *saved-value-cc* a-file 0 INTERMEDIATE-VALUES-INDEX))
+
+(define (intermediate-value-bytes->file a-file
+                                        #:exists (exists 'append))
+  (define a-file (open-output-file (expand-user-path file-name)
+                                   #:exists exists))
+  (print-bytes a-file)
   (close-output-port a-file))
 
 ;; 2 bit register id (R24 R26 R28 R30)

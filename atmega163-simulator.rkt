@@ -179,13 +179,25 @@
 (define (flash-set-word addr val) (vector-set! FLASH addr val))
 ;; get-byte use byte addresses
 (define *flash-address* 0)
+(define *flash-data* 0)
 (define (flash-get-byte addr)
-  ;; (save-intermediate-values (bitwise-xor addr *flash-address*))
-  ;; (set! *flash-address* addr)
+  (when save-hamming-distance?
+    (save-intermediate-values (bitwise-xor addr *flash-address*))
+    (set! *flash-address* addr))
   (define word (flash-get-word (arithmetic-shift addr -1)))
-  (if (bitwise-bit-set? addr 0)      
-      (arithmetic-shift word -8)
-      (bitwise-and word #x00ff)))
+  (if (bitwise-bit-set? addr 0)
+      (let ([a-byte (arithmetic-shift word -8)])
+        (when save-hamming-distance?
+          (save-intermediate-values
+           (bitwise-xor addr *flash-data*))
+          (set! *flash-data* addr))
+        a-byte)
+      (let ([a-byte (bitwise-and word #x00ff)])
+        (when save-hamming-distance?
+          (save-intermediate-values
+           (bitwise-xor addr *flash-data*))
+          (set! *flash-data* addr))
+        a-byte)))
 
 (define (print-flash)
   (define (dots-when-zero num)
@@ -221,12 +233,14 @@
   (define data (vector-ref SRAM address))
   ;;(save-intermediate-values address)
   (save-intermediate-values data)
-  ;; (save-intermediate-values (bitwise-xor
-  ;;                            address *sram-prev-addr*))
-  ;; (save-intermediate-values (bitwise-xor
-  ;;                            data *sram-prev-data*))
-  ;;(set! *sram-prev-addr* address)
-  ;;(set! *sram-prev-data* data)
+  ;; Hamming distance
+  (when save-hamming-distance?
+    ;;(save-intermediate-values (bitwise-xor
+    ;;                         address *sram-prev-addr*))
+    (save-intermediate-values (bitwise-xor
+                               data *sram-prev-data*))
+    ;;(set! *sram-prev-addr* address)
+    (set! *sram-prev-data* data))
   data)
 (define (sram-set-byte addr data)
   (when (> data #xff)
@@ -238,14 +252,14 @@
   (vector-set! SRAM address data)
   ;;(save-intermediate-values address)
   (save-intermediate-values data)
-  ;; (save-intermediate-values (bitwise-xor
-  ;;                            address *sram-prev-addr*))
-  ;; (save-intermediate-values (bitwise-xor
-  ;;                            data *sram-prev-data*))
-  ;;(set! *sram-prev-addr* address)
-  ;;(set! *sram-prev-data* data)
-  )
-
+  ;; Hamming distance
+  (when save-hamming-distance?
+    ;; (save-intermediate-values (bitwise-xor
+    ;;                            address *sram-prev-addr*))
+    ;;(set! *sram-prev-addr* address)
+    (save-intermediate-values (bitwise-xor
+                               data *sram-prev-data*))
+    (set! *sram-prev-data* data)))
 
 (define (get-register reg)
   (when (>= reg 32)
@@ -274,15 +288,15 @@
 (define (sram-set-bit addr i)
   (define data (vector-ref SRAM addr))
   (vector-set! SRAM addr (ior data (<< 1 i)))
-  ;;(save-intermediate-values addr)
-  ;;(save-intermediate-values 1)
+  (save-intermediate-values addr)
+  (save-intermediate-values 1)
   )
 (define (sram-clear-bit addr i)
   (define data (vector-ref SRAM addr))
   (vector-set! SRAM addr (& (vector-ref SRAM addr)
                             (bitwise-not (<< 1 i))))
-  ;;(save-intermediate-values addr)
-  ;;(save-intermediate-values 0)
+  (save-intermediate-values addr)
+  (save-intermediate-values 0)
   )
 (define (sram-get-bit addr i)
   (& (<< (vector-ref SRAM addr) (- i)) 1))
@@ -464,9 +478,10 @@
   (set! SAVED-PC 0)
   ;;(set! INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
   (set! INTERMEDIATE-VALUES-INDEX 0)
-  (set! SAVED-VALS '())
+;;  (set! SAVED-VALS '())
   (set! PC 0)
   (set! *flash-address* 0)
+  (set! *flash-data* 0)
   (set! *sram-prev-data* 0)
   (set! *sram-prev-addr* 0)
   (if filename
