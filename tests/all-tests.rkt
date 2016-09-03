@@ -13,13 +13,13 @@
 
 ;; reset the machine, load everything, 
 ;; and let the init code execute
-(define (prepare-machine label)
+(define (prepare-machine label (set-debug? #f))
   ;; Get the symbol table
   (define symbol-file "main.sim")
   (load-symbol-table symbol-file)
   ;; Load the hex file
   (define hex-file "main.hex")
-  (set! debug? #t)
+  (set! debug? set-debug?)
   (reset-machine)
   (hex->flash! hex-file)
   (flash->procedures!)
@@ -81,19 +81,51 @@
 ;; ST X,Rr
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (prepare-machine "startTestSTXRr")
-(set! debug? #f)
 (run 2)
 (for ([i 256])
   (step-and-compare-reg-content "startTestSTXRr" (+ #x60 i) 
                                 (vector-ref sbox i) 4))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ST X+,Rr
+;; MOV
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(prepare-machine "startTestSTXRr")
+(prepare-machine "testMOV0")
+(for ([i 16])
+  (set-register (+ i 16) i))
+(for ([i 16])
+  (step-and-compare-reg-content
+   (string-append "MOV r"
+                  (number->string i)
+                  ", r"
+                  (number->string (+ i 16)))
+   i i))
+
+(prepare-machine "testMOV1")
+(for ([i 16])
+  (set-register (+ i 16) i))
+(for ([i 16])
+  (step-and-compare-reg-content
+   (string-append "MOV r"
+                  (number->string (modulo (+ i 1) 16))
+                  ", r"
+                  (number->string (+ i 16)))
+   (modulo (+ i 1) 16) i))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test jumps
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(prepare-machine "testJUMPS")
+(run 1)
+(check-equal? PC (lookup-symbol "main") "testJUMPS main")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; test branches and 32-bit instructions afterwards
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(prepare-machine "test32BitInstructions" #t)
+(set-register 30 0)
+(set-register 31 0)
+(define saved-pc PC)
+(run 1)
+(check-equal? PC (+ saved-pc 3) "CPSE followed by 32-bit insruction")
 
 
-(prepare-machine "cipher_e_xfrm")
-(set! debug? #t)
-(set-register 28 #xff)
-(go-address (lookup-symbol "cipher_e_xfrm_end"))

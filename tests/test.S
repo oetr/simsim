@@ -555,89 +555,48 @@ startTestSTXRr:
 	jmp 1b
 	
 	
-testMOV:			; Moving data from registers to each other
+testMOV0:
 	mov r0,r16
+	mov r1,r17
+	mov r2,r18
+	mov r3,r19
+	mov r4,r20
+	mov r5,r21
+	mov r6,r22
+	mov r7,r23
+	mov r8,r24
+	mov r9,r25
+	mov r10,r26
+	mov r11,r27
+	mov r12,r28
+	mov r13,r29
+	mov r14,r30
+	mov r15,r31
+
+testMOV1:
+	mov r1,r16
+	mov r2,r17
+	mov r3,r18
+	mov r4,r19
+	mov r5,r20
+	mov r6,r21
+	mov r7,r22
+	mov r8,r23
+	mov r9,r24
+	mov r10,r25
+	mov r11,r26
+	mov r12,r27
+	mov r13,r28
+	mov r14,r29
+	mov r15,r30
+	mov r0,r31
+
+test32BitInstructions:
+	cpse r30,r31
+	call testJUMPS
+	ldi r31,0x00
 
 testJUMPS:
 	rjmp main
 
-cipher_e_xfrm:
-	push	r28
-	push	r29
-	movw	r30, r22
-	movw	r26, r24
-	ld	r18, X+
-	ld	r19, X
-	sbiw	r26, 0x01	; 1
-	std	Z+1, r19	; 0x01
-	st	Z, r18
-	adiw	r26, 0x02	; 2
-	ld	r24, X+
-	ld	r25, X
-	sbiw	r26, 0x03	; 3
-	std	Z+3, r25	; 0x03
-	std	Z+2, r24	; 0x02
-	ldi	r26, 0x60	; 96
-	ldi	r27, 0x08	; 8
-	ld	r24, Z
-	ldd	r25, Z+1	; 0x01
-	ldd	r18, Z+3	; 0x03
-	mov	r23, r18
-	add	r23, r23
-	ldd	r19, Z+2	; 0x02
-	mov	r22, r19
-	adc	r22, r22
-	eor	r22, r22
-	adc	r22, r22
-	mov	r28, r23
-	or	r28, r22
-	add	r19, r19
-	adc	r18, r18
-	eor	r18, r18
-	adc	r18, r18
-	mov	r29, r19
-	or	r29, r18
-	movw	r22, r28
-	add	r22, r24
-	adc	r23, r25
-	std	Z+3, r23	; 0x03
-	std	Z+2, r22	; 0x02
-	ld	r18, X+
-	ld	r19, X+
-	eor	r18, r22
-	eor	r19, r23
-	std	Z+3, r19	; 0x03
-	std	Z+2, r18	; 0x02
-	mov	r23, r25
-	swap	r23
-	lsr	r23
-	lsr	r23
-	andi	r23, 0x03	; 3
-	mov	r22, r24
-	add	r22, r22
-	add	r22, r22
-	mov	r20, r23
-	or	r20, r22
-	mov	r22, r24
-	swap	r22
-	lsr	r22
-	lsr	r22
-	andi	r22, 0x03	; 3
-	mov	r24, r25
-	add	r24, r24
-	add	r24, r24
-	mov	r21, r22
-	or	r21, r24
-	eor	r18, r20
-	eor	r19, r21
-	std	Z+1, r19	; 0x01
-	st	Z, r18
-	ldi	r24, 0x08	; 8
-	cpi	r26, 0x8C	; 140
-	cpc	r27, r24
-	brne	.-114    	; 0x1f9c <cipher_e_xfrm+0x22>
-	pop	r29
-cipher_e_xfrm_end:	
-	pop	r28
-	ret
 .end
