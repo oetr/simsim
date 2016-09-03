@@ -58,6 +58,8 @@
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
+    (when (> data 255)
+      (printf "~a - ~a - ~a~n" data SAVED-PC CURRENT-CLOCK-CYCLE))
     (save-values! data SAVED-PC CURRENT-CLOCK-CYCLE)
     ;; (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
     ;;              (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
@@ -572,6 +574,16 @@
     (fprintf OUT "LD R~a,Y+[~a]" Rd (num->hex y-val)))
   (set! clock-cycles 2))
 
+(define (avr-LD-Y-decr Rd)
+  (define y (get-y))
+  (define y-val (sram-get-byte y))
+  (set-register Rd y-val)
+  (dec-y)
+  (when debug?
+    (print-instruction-uniquely OUT 'LDRdY-)
+    (fprintf OUT "LD R~a,Y-[~a]" Rd (num->hex y-val)))
+  (set! clock-cycles 2))
+
 (define (avr-LDD-Z Rd q)
   (define z (get-z))
   (define z-val (sram-get-byte (+ z q)))
@@ -1022,7 +1034,7 @@
     (list #x900C 'LD-X avr-LD-X 2 #f)
     (list #x900E 'LD-X-decr 'avr-LD-X-decr 2 #f)
     (list #x900D 'LD-X-incr avr-LD-X-incr 2 #f)
-    (list #x900A 'LD-Y-decr 'avr-LD-Y-decr 2 #f)
+    (list #x900A 'LD-Y-decr avr-LD-Y-decr 2 #f)
     (list #x9009 'LD-Y-incr avr-LD-Y-incr 2 #f)
     (list #x9002 'LD-Z-decr 'avr-LD-Z-decr 2 #f)
     (list #x9001 'LD-Z-incr avr-LD-Z-incr 2 #f)

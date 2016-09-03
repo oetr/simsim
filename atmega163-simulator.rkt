@@ -182,21 +182,21 @@
 (define *flash-data* 0)
 (define (flash-get-byte addr)
   (when save-hamming-distance?
-    (save-intermediate-values (bitwise-xor addr *flash-address*))
+    (save-intermediate-values (hamming-distance addr *flash-address*))
     (set! *flash-address* addr))
   (define word (flash-get-word (arithmetic-shift addr -1)))
   (if (bitwise-bit-set? addr 0)
       (let ([a-byte (arithmetic-shift word -8)])
         (when save-hamming-distance?
-          (save-intermediate-values
-           (bitwise-xor addr *flash-data*))
-          (set! *flash-data* addr))
+          (save-intermediate-values (bitwise-xor a-byte
+                                                 *flash-data*))
+          (set! *flash-data* a-byte))
         a-byte)
       (let ([a-byte (bitwise-and word #x00ff)])
         (when save-hamming-distance?
-          (save-intermediate-values
-           (bitwise-xor addr *flash-data*))
-          (set! *flash-data* addr))
+          (save-intermediate-values (bitwise-xor a-byte
+                                                 *flash-data*))
+          (set! *flash-data* a-byte))
         a-byte)))
 
 (define (print-flash)
@@ -285,21 +285,33 @@
   (set-register (+ reg 1) (<< val -8)) ;; high value
   )
 
+(define *sram-prev-byte* 0)
+(define *sram-prev-bit-addr* 0)
+
 (define (sram-set-bit addr i)
   (define data (vector-ref SRAM addr))
-  (vector-set! SRAM addr (ior data (<< 1 i)))
+  (define result (ior data (<< 1 i)))
+  (vector-set! SRAM addr result)
+  (when save-hamming-distance?
+    (save-intermediate-values (n-bit-ref *sram-prev-byte* i))
+    (set! *sram-prev-byte* result))
   ;; (save-intermediate-values addr)
-  ;; (save-intermediate-values 1)
-  )
+  (save-intermediate-values 1))
+
 (define (sram-clear-bit addr i)
   (define data (vector-ref SRAM addr))
-  (vector-set! SRAM addr (& (vector-ref SRAM addr)
-                            (bitwise-not (<< 1 i))))
+  (define result (& (vector-ref SRAM addr)
+                    (bitwise-not (<< 1 i))))
+  (vector-set! SRAM addr result)
+  (when save-hamming-distance?
+    (save-intermediate-values (bit-ref *sram-prev-byte* i))
+    (set! *sram-prev-byte* result))
   ;; (save-intermediate-values addr)
-  ;; (save-intermediate-values 0)
-  )
+  (save-intermediate-values 0))
+
 (define (sram-get-bit addr i)
   (& (<< (vector-ref SRAM addr) (- i)) 1))
+
 ;; map register file
 (define (get-x) (ior (<< (get-register 27) 8)
                      (get-register 26)))
@@ -313,6 +325,10 @@
   (set-register 26 (& x #xff)))
 (define (inc-y)
   (define y (+ (get-y) 1))
+  (set-register 29 (<<& y -8 #xff))
+  (set-register 28 (& y #xff)))
+(define (dec-y)
+  (define y (- (get-y) 1))
   (set-register 29 (<<& y -8 #xff))
   (set-register 28 (& y #xff)))
 (define (inc-z)
@@ -339,7 +355,6 @@
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
     (printf "~a " (dots-when-zero byte)))
   (printf "~a~n " accumulated-bytes))
-
 
 ;; map I/O
 (define IO-SIZE 64)
@@ -447,9 +462,6 @@
   (define sp (get-sp))
   (define word-low (& word #xff))
   (define word-high (<<& word -8 #xff))
-  ;; (when debug?
-  ;;     (fprintf OUT "{STACK PUSH: sp: ~a, low: ~a, high: ~a}" 
-  ;;             sp (num->hex word-low) (num->hex word-high)))
   (sram-set-byte sp word-low)
   (sram-set-byte (- sp 1) word-high)
   (inc-sp -2))
@@ -457,9 +469,6 @@
   (define sp (+ (get-sp) 1))
   (define word-high (sram-get-byte sp))
   (define word-low  (sram-get-byte (+ sp 1)))
-  ;; (when debug?
-  ;;     (fprintf OUT "{STACK POP: sp: ~a, low: ~a, high: ~a}" 
-  ;;             sp (num->hex word-low) (num->hex word-high)))
   (inc-sp 2)
   (ior (<< word-high 8)
        word-low))
@@ -471,14 +480,12 @@
 (define (reset-machine (filename #f) #:keep-flash? (keep-flash? #f))
   (unless keep-flash?
     (for ([i FLASHEND]) (vector-set! FLASH i 0)))
-  ;;(set! SRAM (make-vector RAMEND #x00))
+  (set! SRAM (make-vector RAMEND #x00)) 
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
   (set! PREVIOUS-CLOCK-CYCLE #f)
   (set! SAVED-PC 0)
-  ;;(set! INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
   (set! INTERMEDIATE-VALUES-INDEX 0)
-;;  (set! SAVED-VALS '())
   (set! PC 0)
   (set! *flash-address* 0)
   (set! *flash-data* 0)
@@ -524,7 +531,6 @@
 (define & bitwise-and)
 (define ior bitwise-ior)
 (define (one? num) (not (zero? num)))
-
 
 ;; make it easier to access the registers
 (define (get-Rd opcode)
@@ -576,8 +582,6 @@
                  (& (n-bit-ref result bit)
                     (bit-ref r1 bit))))
       (sr-set-C) (sr-clear-C)))
-
-;; ???
 
 ;; TODO: make sure to fetch 32-bit instructions properly
 (define (is-two-word-instruction? addr)

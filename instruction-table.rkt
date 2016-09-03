@@ -18,6 +18,7 @@
    (cons 'LDRdX+q  (instr 2 "LD Rd,X+q" 2))
    (cons 'LDRdY    (instr 2 "LD Rd,Y" 2))
    (cons 'LDRdY+   (instr 2 "LD Rd,Y+" 2))
+   (cons 'LDRdY-   (instr 2 "LD Rd,Y-" 2))
    (cons 'LDRdY+q  (instr 2 "LD Rd,Y+q" 2))
    (cons 'LDRdZ    (instr 2 "LD Rd,Z" 2))
    (cons 'LDRdZ+   (instr 2 "LD Rd,Z+" 2))
