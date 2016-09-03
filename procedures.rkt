@@ -545,6 +545,16 @@
     (fprintf OUT "LD R~a,X[~a]" Rd (num->hex x-val)))
   (set! clock-cycles 2))
 
+(define (avr-LD-X-decr Rd)
+  (define x (get-x))
+  (define x-val (sram-get-byte x))
+  (set-register Rd x-val)
+  (dec-x)
+  (when debug?
+    (print-instruction-uniquely OUT 'LDRdX-)
+    (fprintf OUT "LD R~a,X-[~a]" Rd (num->hex x-val)))
+  (set! clock-cycles 2))
+
 (define (avr-LD-X-incr Rd)
   (define x (get-x))
   (define x-val (sram-get-byte x))
@@ -591,6 +601,16 @@
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+q)
     (fprintf OUT "LD R~a,Z+~a[~a]" Rd q (num->hex z-val)))
+  (set! clock-cycles 2))
+
+(define (avr-LD-Z-decr Rd)
+  (define z (get-z))
+  (define z-val (sram-get-byte z))
+  (set-register Rd z-val)
+  (dec-z)
+  (when debug?
+    (print-instruction-uniquely OUT 'LDRdZ-)
+    (fprintf OUT "LD R~a,Z-[~a]" Rd (num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Z-incr Rd)
@@ -1032,11 +1052,11 @@
     (list #x9403 'INC avr-INC 2 #f)
     (list #x9000 'LDS avr-LDS-get-args 2 #t)
     (list #x900C 'LD-X avr-LD-X 2 #f)
-    (list #x900E 'LD-X-decr 'avr-LD-X-decr 2 #f)
+    (list #x900E 'LD-X-decr avr-LD-X-decr 2 #f)
     (list #x900D 'LD-X-incr avr-LD-X-incr 2 #f)
     (list #x900A 'LD-Y-decr avr-LD-Y-decr 2 #f)
     (list #x9009 'LD-Y-incr avr-LD-Y-incr 2 #f)
-    (list #x9002 'LD-Z-decr 'avr-LD-Z-decr 2 #f)
+    (list #x9002 'LD-Z-decr avr-LD-Z-decr 2 #f)
     (list #x9001 'LD-Z-incr avr-LD-Z-incr 2 #f)
     (list #x9004 'LPM-Z avr-LPM-Z 2 #f)
     (list #x9005 'LPM-Z-incr avr-LPM-Z-incr 2 #f)
