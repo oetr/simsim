@@ -4,6 +4,7 @@
 
 (define save-intermediate-values? #f)
 (define save-hamming-distance? #f)
+(define save-bus? #f)
 (define NOF-INTERMEDIATE-VALUES 3)
 (define INTERMEDIATE-VALUES-N 100000)
 (define INTERMEDIATE-VALUES-BYTES 2)
@@ -334,7 +335,7 @@
   (define k (2-complement->num 7 k-num))
   (define b-val (sr-get-bit b))
   (when (zero? b-val)
-    (set! PC (+ PC k))
+    (set-pc! (+ PC k))
     (set! clock-cycles (+ clock-cycles 1)))
   (set! clock-cycles (+ clock-cycles 1))
   (when debug?
@@ -345,7 +346,7 @@
   (define k (2-complement->num 7 k-num))
   (define b-val (sr-get-bit b))
   (when (one? b-val)
-    (set! PC (+ PC k))
+    (set-pc! (+ PC k))
     (set! clock-cycles (+ clock-cycles 1)))
   (set! clock-cycles (+ clock-cycles 1))
   (when debug?
@@ -786,14 +787,14 @@
 (define (avr-RCALL k-unsigned)
   (define k (2-complement->num 12 k-unsigned))
   (stack-push-word PC)
-  (set! PC (+ PC k))
+  (set-pc! (+ PC k))
   (when debug?
     (print-instruction-uniquely OUT 'RCALL)
     (fprintf OUT "RCALL ~a" (lookup-address PC)))
   (set! clock-cycles 3))
 
 (define (avr-RET _)
-  (set! PC (stack-pop-word))
+  (set-pc! (stack-pop-word))
   (when debug?
     (print-instruction-uniquely OUT 'RET)
     (fprintf OUT "RET"))
@@ -802,7 +803,7 @@
 (define (avr-RJMP k-unsigned)
   (define k (2-complement->num 12 k-unsigned))
   (define PC-now PC)
-  (set! PC (& (+ PC k) #xfff))
+  (set-pc! (& (+ PC k) #xfff))
   (when debug?
     (print-instruction-uniquely OUT 'RJMP)
     (fprintf OUT "RJMP ~a" (num->hex (- (& (+ PC k) #xfff) PC -1))))
@@ -988,7 +989,7 @@
   (list avr-CALL (list (ior (<< kh 16) kl))))
 (define (avr-CALL k)
   (stack-push-word (+ PC 1))
-  (set! PC k)
+  (set-pc! k)
   (when debug?
     (print-instruction-uniquely OUT 'CALL)
     (fprintf OUT "CALL ~a" (lookup-address PC)))
@@ -997,7 +998,7 @@
 (define (avr-JMP-get-args kh kl)
   (list avr-JMP (list (+ (<< kh 16) kl))))
 (define (avr-JMP k)
-  (set! PC k)
+  (set-pc! k)
   (when debug?
     (print-instruction-uniquely OUT 'JMP)
     (fprintf OUT "JMP ~a" k))

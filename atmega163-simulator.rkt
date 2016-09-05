@@ -237,11 +237,11 @@
   (save-intermediate-values data)
   ;; Hamming distance
   (when save-hamming-distance?
-    ;;(save-intermediate-values (bitwise-xor
-    ;;                         address *sram-prev-addr*))
+    (save-intermediate-values (bitwise-xor
+                               address *sram-prev-addr*))
+    (set! *sram-prev-addr* address)
     (save-intermediate-values (bitwise-xor
                                data *sram-prev-data*))
-    ;;(set! *sram-prev-addr* address)
     (set! *sram-prev-data* data))
   data)
 (define (sram-set-byte addr data)
@@ -256,9 +256,9 @@
   (save-intermediate-values data)
   ;; Hamming distance
   (when save-hamming-distance?
-    ;; (save-intermediate-values (bitwise-xor
-    ;;                            address *sram-prev-addr*))
-    ;;(set! *sram-prev-addr* address)
+    (save-intermediate-values (bitwise-xor
+                               address *sram-prev-addr*))
+    (set! *sram-prev-addr* address)
     (save-intermediate-values (bitwise-xor
                                data *sram-prev-data*))
     (set! *sram-prev-data* data)))
@@ -271,6 +271,7 @@
   ;;(save-intermediate-values reg)
   (save-intermediate-values data)
   data)
+(define *bus-prev-byte* 0)
 (define (set-register reg val)
   (when (>= reg 32)
     (error 'set-register
@@ -279,6 +280,9 @@
   (when save-hamming-distance?
     (define reg-prev-val (vector-ref SRAM reg))
     (save-intermediate-values (bitwise-xor reg-prev-val val)))
+  (when save-bus?
+    (save-intermediate-values (bitwise-xor *bus-prev-byte* val))
+    (set! *bus-prev-byte* val))
   (vector-set! SRAM reg val)
   ;;(save-intermediate-values reg)
   (save-intermediate-values val)
@@ -448,6 +452,10 @@
 
 ;; program counter
 (define PC 0)
+(define (set-pc! new-pc)
+  (when save-hamming-distance?
+    (save-intermediate-values (bitwise-xor PC new-pc)))
+  (set! PC new-pc))
 (define (inc-pc) (set! PC (+ PC 1)))
 (define (dec-pc) (set! PC (- PC 1)))
 (define (next-instruction) (flash-get-word PC))
