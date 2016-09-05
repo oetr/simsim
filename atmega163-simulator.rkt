@@ -26,14 +26,16 @@
    (for/list ([i (range (- (quotient n-bytes 8) 1) -1 -1)])
      (<<& num (* i -8) #xff))))
 
+(define (hamming-weight n)
+  (define result 0)
+  (for ([bit (integer-length n)])
+    (when (bitwise-bit-set? n bit)
+      (set! result (+ result 1))))
+  result)
+
 (define (hamming-distance n0 n1)
   (define xored-number (bitwise-xor n0 n1))
-  (define result 0)
-  (for ([bit (integer-length xored-number)])
-    (when (bitwise-bit-set? xored-number 0)
-      (set! result (+ result 1)))
-    (set! xored-number (<< xored-number -1)))
-  result)
+  (hamming-weight xored-number))
 
 (define (hex->flash! a-file)
   (define hex (file->lines (expand-user-path a-file)))
@@ -182,7 +184,7 @@
 (define *flash-data* 0)
 (define (flash-get-byte addr)
   (when save-hamming-distance?
-    (save-intermediate-values (hamming-distance addr *flash-address*))
+    (save-intermediate-values (bitwise-xor addr *flash-address*))
     (set! *flash-address* addr))
   (define word (flash-get-word (arithmetic-shift addr -1)))
   (if (bitwise-bit-set? addr 0)
@@ -274,6 +276,9 @@
     (error 'set-register
            "ERROR: register higher than 32 ~a~n" 
            (num->hex reg)))
+  (when save-hamming-distance?
+    (define reg-prev-val (vector-ref SRAM reg))
+    (save-intermediate-values (bitwise-xor reg-prev-val val)))
   (vector-set! SRAM reg val)
   ;;(save-intermediate-values reg)
   (save-intermediate-values val)

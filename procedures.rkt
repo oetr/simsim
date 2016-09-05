@@ -58,9 +58,7 @@
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
-    (when (> data 255)
-      (printf "~a - ~a - ~a~n" data SAVED-PC CURRENT-CLOCK-CYCLE))
-    (save-values! data SAVED-PC CURRENT-CLOCK-CYCLE)
+    (save-values! (hamming-weight data) SAVED-PC CURRENT-CLOCK-CYCLE)
     ;; (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
     ;;              (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
     (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX
@@ -693,7 +691,7 @@
   (define Rd-val (get-register Rd))
   (define Rr-val (get-register Rr))
   (set-register Rd Rr-val)
-  (when debug? 
+  (when debug?
     (print-instruction-uniquely OUT 'MOV)
     (fprintf OUT "MOV R~a,R~a[~a]"
              Rd Rr (num->hex Rr-val)))
