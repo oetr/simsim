@@ -165,7 +165,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 16-bit instructions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (avr-NOP . args)
+(define (avr-IJMP . _)
+  (define z (get-z))
+  (set-pc! z)
+  (when debug?
+    (print-instruction-uniquely OUT 'IJMP)
+    (fprintf OUT "IJMP Z[~a]" z))
+  (set! clock-cycles 2))
+
+(define (avr-NOP . _)
   (when debug?
     (print-instruction-uniquely OUT 'NOP)
     (fprintf OUT "NOP"))
@@ -536,98 +544,108 @@
   (set! clock-cycles 1))
 
 (define (avr-LD-X Rd)
+  (define Rd-val (get-register Rd))
   (define x (get-x))
   (define x-val (sram-get-byte x))
   (set-register Rd x-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX)
-    (fprintf OUT "LD R~a,X[~a]" Rd (num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X[~a]" Rd (num->hex Rd-val) (num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-X-decr Rd)
+  (define Rd-val (get-register Rd))
   (define x (get-x))
   (define x-val (sram-get-byte x))
   (set-register Rd x-val)
   (dec-x)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX-)
-    (fprintf OUT "LD R~a,X-[~a]" Rd (num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X-[~a]" Rd (num->hex Rd-val)(num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-X-incr Rd)
+  (define Rd-val (get-register Rd))
   (define x (get-x))
   (define x-val (sram-get-byte x))
   (set-register Rd x-val)
   (inc-x)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX+)
-    (fprintf OUT "LD R~a,X+[~a]" Rd (num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X+[~a]" Rd (num->hex Rd-val)(num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDD-Y Rd q)
+  (define Rd-val (get-register Rd))
   (define y (get-y))
   (define val (sram-get-byte (+ y q)))
   (set-register Rd val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+q)
-    (fprintf OUT "LD R~a,Y+~a[~a]" Rd q (num->hex val)))
+    (fprintf OUT "LD R~a[~a],Y+~a[~a]" Rd (num->hex Rd-val)q (num->hex val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Y-incr Rd)
+  (define Rd-val (get-register Rd))
   (define y (get-y))
   (define y-val (sram-get-byte y))
   (set-register Rd y-val)
   (inc-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+)
-    (fprintf OUT "LD R~a,Y+[~a]" Rd (num->hex y-val)))
+    (fprintf OUT "LD R~a[~a],Y+[~a]" Rd (num->hex Rd-val)(num->hex y-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Y-decr Rd)
+  (define Rd-val (get-register Rd))
   (define y (get-y))
   (define y-val (sram-get-byte y))
   (set-register Rd y-val)
   (dec-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY-)
-    (fprintf OUT "LD R~a,Y-[~a]" Rd (num->hex y-val)))
+    (fprintf OUT "LD R~a[~a],Y-[~a]" Rd (num->hex Rd-val)(num->hex y-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDD-Z Rd q)
+    (define Rd-val (get-register Rd))
   (define z (get-z))
   (define z-val (sram-get-byte (+ z q)))
   (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+q)
-    (fprintf OUT "LD R~a,Z+~a[~a]" Rd q (num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z+~a[~a]" Rd (num->hex Rd-val) q (num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Z-decr Rd)
+  (define Rd-val (get-register Rd))
   (define z (get-z))
   (define z-val (sram-get-byte z))
   (set-register Rd z-val)
   (dec-z)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ-)
-    (fprintf OUT "LD R~a,Z-[~a]" Rd (num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z-[~a]" Rd (num->hex Rd-val)(num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Z-incr Rd)
+  (define Rd-val (get-register Rd))
   (define z (get-z))
   (define z-val (sram-get-byte z))
   (set-register Rd z-val)
   (inc-z)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+)
-    (fprintf OUT "LD R~a,Z+[~a]" Rd (num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z+[~a]" Rd (num->hex Rd-val)(num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDI Rd-16 K)
   (define Rd (+ Rd-16 16))
+  (define Rd-val (get-register Rd))
   (set-register Rd K)
   (when debug?
     (print-instruction-uniquely OUT 'LDI)
-    (fprintf OUT "LDI R~a,K[~a]" Rd (num->hex K)))
+    (fprintf OUT "LDI R~a[~a],K[~a]" Rd (num->hex Rd-val) (num->hex K)))
   (set! clock-cycles 1))
 
 (define (avr-LDS-get-args Rd k)
@@ -642,21 +660,23 @@
   (set! clock-cycles 2))
 
 (define (avr-LPM _)
+  (define Rd-val (get-register 0))
   (define z (get-z))
   (define z-val (flash-get-byte z))
   (set-register 0 z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
-    (fprintf OUT "LPM R0,Z[~a]" (num->hex z-val)))
+    (fprintf OUT "LPM R0[~a],Z[~a]" (num->hex Rd-val) (num->hex z-val)))
   (set! clock-cycles 3))
 
 (define (avr-LPM-Z Rd)
+  (define Rd-val (get-register Rd))
   (define z (get-z))
   (define z-val (flash-get-byte z))
   (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
-    (fprintf OUT "LPM R~a,Z[~a]" Rd (num->hex z-val)))
+    (fprintf OUT "LPM R~a[~a],Z[~a]" Rd (num->hex Rd-val) (num->hex z-val)))
   (set! clock-cycles 3))
 
 (define (avr-LPM-Z-incr Rd)
@@ -694,8 +714,8 @@
   (set-register Rd Rr-val)
   (when debug?
     (print-instruction-uniquely OUT 'MOV)
-    (fprintf OUT "MOV R~a,R~a[~a]"
-             Rd Rr (num->hex Rr-val)))
+    (fprintf OUT "MOV R~a[~a],R~a[~a]"
+             Rd (num->hex Rd-val) Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
 (define (avr-MUL Rd Rr)
@@ -852,6 +872,21 @@
     (fprintf OUT "SBI A[~a],b[~a]"
              (num->hex A) b))
   (set! clock-cycles 2))
+
+(define (avr-SBIC A b)
+  (define b-val (io-get-bit A b))
+  (when (zero? b-val)
+    (define next-instr (vector-ref PROCEDURES PC))
+    (when (opcode-info-32-bit? next-instr)
+      (inc-pc)
+      (set! clock-cycles (+ clock-cycles 1)))
+    (inc-pc)
+    (set! clock-cycles (+ clock-cycles 1)))
+  (set! clock-cycles (+ clock-cycles 1))
+  (when debug?
+    (print-instruction-uniquely OUT 'SBIC)
+    (fprintf OUT "SBIC A[~a],b[~a] ; ~a"
+             (num->hex A) b (zero? b-val))))
 
 (define (avr-SBIW K Rd-2-bits)
   (define Rd (+ 24 (* Rd-2-bits 2)))
@@ -1015,7 +1050,7 @@
     (list #x95D8 'ELPM   'avr-ELPM   2 #f)
     (list #x95F8 'ESPM   'avr-ESPM   2 #f)
     (list #x9509 'ICALL  'avr-ICALL  2 #f)
-    (list #x9409 'IJMP   'avr-IJMP   2 #f)
+    (list #x9409 'IJMP   avr-IJMP   2 #f)
     (list #x95C8 'LPM    avr-LPM    2 #f)
     (list #x0000 'NOP    avr-NOP     2 #f)
     (list #x9508 'RET    avr-RET    2 #f)
@@ -1129,7 +1164,7 @@
    (list
     (list #x9800 'CBI avr-CBI 2 #f)
     (list #x9A00 'SBI avr-SBI 2 #f)
-    (list #x9900 'SBIC 'avr-SBIC 2 #f)
+    (list #x9900 'SBIC avr-SBIC 2 #f)
     (list #x9B00 'SBIS 'avr-SBIS 2 #f))))
 ;; opcodes with a 6-bit IO Addr A and register Rd
 (define opcodes-6-bit-A-Rd

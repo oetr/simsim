@@ -110,8 +110,8 @@
    (cons 'SBI  (instr 28 "SBI" 2))
    (cons 'SBI  (instr 28 "SBI A,b" 2))
 
-   (cons 'SBIC  (instr 29 "SBIC" (list 1 2)))
-   (cons 'SBIC  (instr 29 "SBIC A,b" (list 1 2)))
+   (cons 'SBIC  (instr 29 "SBIC" (list 1 2 3)))
+   (cons 'SBIC  (instr 29 "SBIC A,b" (list 1 2 3)))
 
    (cons 'SBCI  (instr 30 "SBCI" 1))
    (cons 'SBCI  (instr 30 "SBCI Rd,K" 1))
@@ -181,6 +181,9 @@
 
    (cons 'NEG  (instr 54 "NEG" 1))
    (cons 'NEG  (instr 54 "NEG Rd" 1))
+
+   (cons 'IJMP  (instr 55 "IJMP" 2))
+
    ))
 
 (define instruction-table (make-hash instructions))
