@@ -689,6 +689,27 @@
     (fprintf OUT "LPM R~a,Z+ [~a]" Rd (num->hex z-val)))
   (set! clock-cycles 3))
 
+
+(define (avr-NEG Rd)
+  (define Rd-val (get-register Rd))
+  (define R (& (- Rd-val) #xff))
+  (set-register Rd R)
+  (if (one? (ior (bit-ref R 3) 
+                 (n-bit-ref Rd-val 3)))
+      (sr-set-H) (sr-clear-H))
+  (if (= R #x80) (sr-set-V)(sr-clear-V))
+  (compute-S)
+  (compute-N R)
+  (compute-Z R)
+  (if (zero? R) (sr-clear-C)(sr-set-C))
+  (when debug?
+    (print-instruction-uniquely OUT 'NEG)
+    (fprintf OUT "NEG R~a[~a] ; ~a" 
+             Rd 
+             (num->hex Rd-val)
+             (num->hex R)))
+  (set! clock-cycles 1))
+
 (define (avr-LSR Rd)
   (define Rd-val (get-register Rd))
   (define R (<< Rd-val -1))
@@ -1095,7 +1116,7 @@
     (list #x9004 'LPM-Z avr-LPM-Z 2 #f)
     (list #x9005 'LPM-Z-incr avr-LPM-Z-incr 2 #f)
     (list #x9406 'LSR avr-LSR 2 #f)
-    (list #x9401 'NEG 'avr-NEG 2 #f)
+    (list #x9401 'NEG avr-NEG 2 #f)
     (list #x900F 'POP avr-POP 2 #f)
     (list #x920F 'PUSH avr-PUSH 2 #f)
     (list #x9407 'ROR avr-ROR 2 #f)
