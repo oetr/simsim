@@ -1242,7 +1242,7 @@
     (list #x9800 'CBI avr-CBI 2 #f)
     (list #x9A00 'SBI avr-SBI 2 #f)
     (list #x9900 'SBIC avr-SBIC 2 #f)
-    (list #x9B00 'SBIS 'avr-SBIS 2 #f))))
+    (list #x9B00 'SBIS avr-SBIS 2 #f))))
 ;; opcodes with a 6-bit IO Addr A and register Rd
 (define opcodes-6-bit-A-Rd
   (make-hash
