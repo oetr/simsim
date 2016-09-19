@@ -955,6 +955,16 @@
     (fprintf OUT "ST X+,R~a[~a]" Rr (num->hex Rr-val)))
   (set! clock-cycles 2))
 
+(define (avr-ST-X-decr Rr)
+  (define x (get-x))
+  (define Rr-val (get-register Rr))
+  (sram-set-byte x Rr-val)
+  (dec-x)
+  (when debug?
+    (print-instruction-uniquely OUT 'STX-Rr)
+    (fprintf OUT "ST X-,R~a[~a]" Rr (num->hex Rr-val)))
+  (set! clock-cycles 2))
+
 (define (avr-STD-Y Rr q)
   (define y (get-y))
   (define Rr-val (get-register Rr))
@@ -976,6 +986,16 @@
     (fprintf OUT "ST Y+,R~a[~a]" Rr (num->hex Rr-val)))
   (set! clock-cycles 2))
 
+(define (avr-ST-Y-decr Rr)
+  (define y (get-y))
+  (define Rr-val (get-register Rr))
+  (sram-set-byte y Rr-val)
+  (dec-y)
+  (when debug?
+    (print-instruction-uniquely OUT 'STY-Rr)
+    (fprintf OUT "ST Y-,R~a[~a]" Rr (num->hex Rr-val)))
+  (set! clock-cycles 2))
+
 (define (avr-SWAP Rd)
   (define Rd-val (get-register Rd))
   (define R (ior (&<< Rd-val #x0f 4)
@@ -995,6 +1015,16 @@
     (print-instruction-uniquely OUT 'STZ+qRr)
     (fprintf OUT "ST Z+~a,R~a[~a]"
              q Rr (num->hex Rr-val)))
+  (set! clock-cycles 2))
+
+(define (avr-ST-Z-decr Rr)
+  (define z (get-z))         
+  (define Rr-val (get-register Rr))
+  (sram-set-byte z Rr-val)
+  (dec-z)
+  (when debug?
+    (print-instruction-uniquely OUT 'STZ-Rr)
+    (fprintf OUT "ST Z-,R~a[~a]" Rr (num->hex Rr-val)))
   (set! clock-cycles 2))
 
 (define (avr-ST-Z-incr Rr)
@@ -1122,11 +1152,11 @@
     (list #x9407 'ROR avr-ROR 2 #f)
     (list #x9200 'STS avr-STS-get-args 2 #t)
     (list #x920C 'ST-X avr-ST-X 2 #f)
-    (list #x920E 'ST-X-decr 'avr-ST-X-decr 2 #f)
+    (list #x920E 'ST-X-decr avr-ST-X-decr 2 #f)
     (list #x920D 'ST-X-incr avr-ST-X-incr 2 #f)
-    (list #x920A 'ST-Y-decr 'avr-ST-Y-decr 2 #f)
+    (list #x920A 'ST-Y-decr avr-ST-Y-decr 2 #f)
     (list #x9209 'ST-Y-incr avr-ST-Y-incr 2 #f)
-    (list #x9202 'ST-Z-decr 'avr-ST-Z-decr 2 #f)
+    (list #x9202 'ST-Z-decr avr-ST-Z-decr 2 #f)
     (list #x9201 'ST-Z-incr avr-ST-Z-incr 2 #f)
     (list #x9402 'SWAP avr-SWAP 2 #f))))
 ;; opcodes with a register Rd and a constant data K
