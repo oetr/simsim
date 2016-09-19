@@ -909,6 +909,21 @@
     (fprintf OUT "SBIC A[~a],b[~a] ; ~a"
              (num->hex A) b (zero? b-val))))
 
+(define (avr-SBIS A b)
+  (define b-val (io-get-bit A b))
+  (when (one? b-val)
+    (define next-instr (vector-ref PROCEDURES PC))
+    (when (opcode-info-32-bit? next-instr)
+      (inc-pc)
+      (set! clock-cycles (+ clock-cycles 1)))
+    (inc-pc)
+    (set! clock-cycles (+ clock-cycles 1)))
+  (set! clock-cycles (+ clock-cycles 1))
+  (when debug?
+    (print-instruction-uniquely OUT 'SBIS)
+    (fprintf OUT "SBIS A[~a],b[~a] ; ~a"
+             (num->hex A) b (zero? b-val))))
+
 (define (avr-SBIW K Rd-2-bits)
   (define Rd (+ 24 (* Rd-2-bits 2)))
   (define Rd+ (+ Rd 1))
@@ -1066,6 +1081,17 @@
              Rd (num->hex Rd-val) (num->hex K) (num->hex R)))
   (set! clock-cycles 1))
 
+(define (avr-BLD Rd b)
+  (define Rd-val (get-register Rd))
+  (define T (sr-get-T))
+  (define R (ior Rd-val (<< T b)))
+  (set-register Rd R)
+  (when debug?
+    (print-instruction-uniquely OUT 'BLD)
+    (fprintf OUT "BLD R~a[~a],b[~a] ; ~a" 
+             Rd (num->hex Rd-val) (num->hex b) (num->hex R)))
+  (set! clock-cycles 1))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 32-bit instructions
 ;; either get the second half, when saving
@@ -1169,7 +1195,7 @@
     (list #x6000 'ORI avr-ORI 2 #f)
     (list #x4000 'SBCI avr-SBCI 2 #f)
     (list #x5000 'SUBI avr-SUBI 2 #f)
-    (list #xF800 'BLD 'avr-BLD 2 #f))))
+    (list #xF800 'BLD avr-BLD 2 #f))))
 ;; opcodes with a register Rd and a register bit number b
 (define opcodes-Rd-b
   (make-hash

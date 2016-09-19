@@ -3,191 +3,218 @@
 
 (struct instr (id name ccs))
 
-;; name| id| plot name
-(define instructions
+;; lists signify groups that should get the same ID
+;; simple name, name and used registers, clock cycles
+(define *instruction-groups*
   (list
-   (cons 'LPM      (instr 0 "LPM" 3))
-   (cons 'LPMRdZ   (instr 0 "LPM Rd,Z" 3))
-   (cons 'LPMRdZ+  (instr 0 "LPM Z+" 3))
+   (list
+    (list 'LPM      "LPM" 3)
+    (list 'LPMRdZ   "LPM Rd,Z" 3)
+    (list 'LPMRdZ+  "LPM Z+" 3))
+   (list
+    (list 'LDI   "LDI" 1))
+   (list
+    (list 'ORI   "ORI" 1)
+    (list 'ORI   "ORI Rd,K" 1))
+   (list
+    (list 'LD        "LD" 2)
+    (list 'LDRdX     "LD Rd,X" 2)
+    (list 'LDRdX+    "LD Rd,X+" 2)
+    (list 'LDRdX-    "LD Rd,X-" 2)
+    (list 'LDRdX+q   "LD Rd,X+q" 2)
+    (list 'LDRdY     "LD Rd,Y" 2)
+    (list 'LDRdY+    "LD Rd,Y+" 2)
+    (list 'LDRdY-    "LD Rd,Y-" 2)
+    (list 'LDRdY+q   "LD Rd,Y+q" 2)
+    (list 'LDRdZ     "LD Rd,Z" 2)
+    (list 'LDRdZ+    "LD Rd,Z+" 2)
+    (list 'LDRdZ-    "LD Rd,Z-" 2)
+    (list 'LDRdZ+q   "LD Rd,Z+q" 2))
+   (list
+    (list 'MOV   "MOV" 1)
+    (list 'MOV   "MOV Rd,Rr" 1))
+   (list
+    (list 'MOVW   "MOVW" 1)
+    (list 'MOVW   "MOVW Rd,Rr" 1))
+   (list
+    (list 'ST        "ST" 2)
+    (list 'STXRr     "ST X,Rr" 2)
+    (list 'STX+Rr    "ST X+,Rr" 2)
+    (list 'STX-Rr    "ST X-,Rr" 2)
+    (list 'STX+qRr   "ST X+q,Rr" 2)
+    (list 'STYRr     "ST Y,Rr" 2)
+    (list 'STY+Rr    "ST Y+,Rr" 2)
+    (list 'STY-Rr    "ST Y-,Rr" 2)
+    (list 'STY+qRr   "ST Y+q,Rr" 2)
+    (list 'STZRr     "ST Z,Rr" 2)
+    (list 'STZ+Rr    "ST Z+,Rr" 2)
+    (list 'STZ-Rr    "ST Z-,Rr" 2)
+    (list 'STZ+qRr   "ST Z+q,Rr" 2))
+   (list
+    (list 'STS   "STS" 2)
+    (list 'STS   "STS k,Rr" 2))
+   (list
+    (list 'LDS   "LDS" 2)
+    (list 'LDS   "LDS Rr,k" 2))
+   (list
+    (list 'JMP   "JMP" 3))
+   (list
+    (list 'RJMP   "RJMP" 2))
+   (list
+    (list 'RCALL   "RCALL" 3))
+   (list
+    (list 'CALL   "CALL" 4))
+   (list
+    (list 'RET   "RET" 4))
+   (list
+    (list 'EOR   "EOR" 1)
+    (list 'EOR   "EOR Rd,Rr" 1))
+   (list
+    (list 'INC   "INC" 1)
+    (list 'INC   "INC Rd" 1))
+   (list
+    (list 'DEC   "DEC" 1)
+    (list 'DEC   "DEC Rd" 1))
+   (list
+    (list 'CPSE   "CPSE" (list 1 2 3))
+    (list 'CPSE   "CPSE Rd,Rr" (list 1 2 3)))
+   (list
+    (list 'OUT   "OUT" 1)
+    (list 'OUT   "OUT A,Rr" 1))
+   (list
+    (list 'IN   "IN" 1)
+    (list 'IN   "IN Rd,A" 1))
+   (list
+    (list 'PUSH   "PUSH" 2)
+    (list 'PUSH   "PUSH Rd" 2))
+   (list
+    (list 'POP   "POP" 2)
+    (list 'POP   "POP Rd" 2))
+   (list
+    (list 'CPI   "CPI" 1)
+    (list 'CPI   "CPI Rd,K" 1))
+   (list
+    (list 'CP   "CP" 1)
+    (list 'CP   "CP Rd,Rr" 1))
+   (list
+    (list 'CPC   "CPC" 1)
+    (list 'CPC   "CPC Rd,Rr" 1))
+   (list
+    (list 'SUB   "SUB" 1)
+    (list 'SUB   "SUB Rd,Rr" 1))
+   (list
+    (list 'SUBI   "SUBI" 1)
+    (list 'SUBI   "SUBI Rd,K" 1))
+   (list
+    (list 'BLD   "BLD" 1)
+    (list 'BLD   "BLD Rd,b" 1))
+   (list
+    (list 'ADIW   "ADIW" 2)
+    (list 'ADIW   "ADIW Rd,K" 2))
+   (list
+    (list 'SBIW   "SBIW" 2)
+    (list 'SBIW   "SBIW Rd,K" 2))
+   (list
+    (list 'CBI   "CBI" 2)
+    (list 'CBI   "CBI A,b" 2))
+   (list
+    (list 'SBI   "SBI" 2)
+    (list 'SBI   "SBI A,b" 2))
+   (list
+    (list 'SBIC   "SBIC" (list 1 2 3))
+    (list 'SBIC   "SBIC A,b" (list 1 2 3)))
+   (list
+    (list 'SBIS   "SBIS" (list 1 2 3))
+    (list 'SBIS   "SBIS A,b" (list 1 2 3)))
+   (list
+    (list 'SBCI   "SBCI" 1)
+    (list 'SBCI   "SBCI Rd,K" 1))
+   (list
+    (list 'SBRC   "SBRC" (list 1 2 3))
+    (list 'SBRC   "SBRC Rr,b" (list 1 2 3)))
+   (list
+    (list 'SBRS   "SBRS" (list 1 2 3))
+    (list 'SBRS   "SBRS Rr,b" (list 1 2 3)))
+   (list
+    (list 'BRBC   "BRBC" (list 1 2))
+    (list 'BRNE   "BRNE" (list 1 2)))
+   (list
+    (list 'BREQ   "BREQ" (list 1 2)))
+   (list
+    (list 'BRBS   "BRBS" (list 1 2))
+    (list 'BRTC   "BRTC" (list 1 2)))
+   (list
+    (list 'BRTS   "BRTS" (list 1 2)))
+   (list
+    (list 'BRCC   "BRCC" (list 1 2)))
+   (list
+    (list 'ADD   "ADD" 1)
+    (list 'ADD   "ADD Rd,Rr" 1))
+   (list
+    (list 'ADC   "ADC" 1)
+    (list 'ADC   "ADC Rd,Rr" 1))
+   (list
+    (list 'AND   "AND" 1)
+    (list 'AND   "AND Rd,Rr" 1))
+   (list
+    (list 'ROR   "ROR" 1)
+    (list 'ROR   "ROR Rd" 1))
+   (list
+    (list 'LSR   "LSR" 1)
+    (list 'LSR   "LSR Rd" 1))
+   (list
+    (list 'BST   "BST" 1)
+    (list 'BST   "BST Rd" 1))
+   (list
+    (list 'CLI   "CLI" 1))
+   (list
+    (list 'CLC   "CLC" 1))
+   (list
+    (list 'BCLR   "BCLR" 1))
+   (list
+    (list 'CLT   "CLT" 1))
+   (list
+    (list 'SEC   "SEC" 1))
+   (list
+    (list 'BSET   "BSET" 1))
+   (list
+    (list 'SET   "SET" 1))
+   (list
+    (list 'SBC   "SBC" 1))
+   (list         
+    (list 'NOP   "NOP" 1))
+   (list
+    (list 'SWAP   "SWAP" 1)
+    (list 'SWAP   "SWAP Rd" 1))
+   (list
+    (list 'MUL   "MUL" 2)
+    (list 'MUL   "MUL Rd,Rr" 2))
+   (list
+    (list 'OR   "OR" 1))
+   (list         
+    (list 'ANDI   "ANDI" 1)
+    (list 'ANDI   "ANDI Rd,K" 1))
+   (list
+    (list 'NEG   "NEG" 1)
+    (list 'NEG   "NEG Rd" 1))
+   (list
+    (list 'IJMP   "IJMP" 2))))
 
-   (cons 'LDI  (instr 1 "LDI" 1))
+;; give each instruction group a number
+(define (assign-group-id instruction-groups)
+  (define result empty)
+  (for ([group instruction-groups]
+        [group-id (length instruction-groups)])
+    (for ([instruction-data group])
+      (set! result
+            (cons 
+             (cons (car instruction-data)
+                   (apply instr (cons group-id (cdr instruction-data))))
+             result))))
+  (reverse result))
 
-   (cons 'LD       (instr 2 "LD" 2))
-   (cons 'LDRdX    (instr 2 "LD Rd,X" 2))
-   (cons 'LDRdX+   (instr 2 "LD Rd,X+" 2))
-   (cons 'LDRdX-   (instr 2 "LD Rd,X-" 2))
-   (cons 'LDRdX+q  (instr 2 "LD Rd,X+q" 2))
-   (cons 'LDRdY    (instr 2 "LD Rd,Y" 2))
-   (cons 'LDRdY+   (instr 2 "LD Rd,Y+" 2))
-   (cons 'LDRdY-   (instr 2 "LD Rd,Y-" 2))
-   (cons 'LDRdY+q  (instr 2 "LD Rd,Y+q" 2))
-   (cons 'LDRdZ    (instr 2 "LD Rd,Z" 2))
-   (cons 'LDRdZ+   (instr 2 "LD Rd,Z+" 2))
-   (cons 'LDRdZ-   (instr 2 "LD Rd,Z-" 2))
-   (cons 'LDRdZ+q  (instr 2 "LD Rd,Z+q" 2))
-   
-   (cons 'MOV  (instr 3 "MOV" 1))
-   (cons 'MOV  (instr 3 "MOV Rd,Rr" 1))
+(define instructions (assign-group-id *instruction-groups*))
 
-   (cons 'MOVW  (instr 4 "MOVW" 1))
-   (cons 'MOVW  (instr 4 "MOVW Rd,Rr" 1))
-
-   (cons 'ST       (instr 5 "ST" 2))
-   (cons 'STXRr    (instr 5 "ST X,Rr" 2))
-   (cons 'STX+Rr   (instr 5 "ST X+,Rr" 2))
-   (cons 'STX-Rr   (instr 5 "ST X-,Rr" 2))
-   (cons 'STX+qRr  (instr 5 "ST X+q,Rr" 2))
-   (cons 'STYRr    (instr 5 "ST Y,Rr" 2))
-   (cons 'STY+Rr   (instr 5 "ST Y+,Rr" 2))
-   (cons 'STY-Rr   (instr 5 "ST Y-,Rr" 2))
-   (cons 'STY+qRr  (instr 5 "ST Y+q,Rr" 2))
-   (cons 'STZRr    (instr 5 "ST Z,Rr" 2))
-   (cons 'STZ+Rr   (instr 5 "ST Z+,Rr" 2))
-   (cons 'STZ-Rr   (instr 5 "ST Z-,Rr" 2))
-   (cons 'STZ+qRr  (instr 5 "ST Z+q,Rr" 2))
-   
-   (cons 'STS  (instr 6 "STS" 2))
-   (cons 'STS  (instr 6 "STS k,Rr" 2))
-
-   (cons 'LDS  (instr 7 "LDS" 2))
-   (cons 'LDS  (instr 7 "LDS Rr,k" 2))
-
-   (cons 'JMP  (instr 8 "JMP" 3))
-
-   (cons 'RJMP  (instr 9 "RJMP" 2))
-   
-   (cons 'RCALL  (instr 10 "RCALL" 3))
-
-   (cons 'CALL  (instr 11 "CALL" 4))
-
-   (cons 'RET  (instr 12 "RET" 4))
-
-   (cons 'EOR  (instr 13 "EOR" 1))
-   (cons 'EOR  (instr 13 "EOR Rd,Rr" 1))
-
-   (cons 'INC  (instr 14 "INC" 1))
-   (cons 'INC  (instr 14 "INC Rd" 1))
-
-   (cons 'DEC  (instr 15 "DEC" 1))
-   (cons 'DEC  (instr 15 "DEC Rd" 1))
-
-   (cons 'CPSE  (instr 16 "CPSE" (list 1 2 3)))
-   (cons 'CPSE  (instr 16 "CPSE Rd,Rr" (list 1 2 3)))
-
-   (cons 'OUT  (instr 17 "OUT" 1))
-   (cons 'OUT  (instr 17 "OUT A,Rr" 1))
-
-   (cons 'IN  (instr 18 "IN" 1))
-   (cons 'IN  (instr 18 "IN Rd,A" 1))
-   
-   (cons 'PUSH  (instr 19 "PUSH" 2))
-   (cons 'PUSH  (instr 19 "PUSH Rd" 2))
-
-   (cons 'POP  (instr 20 "POP" 2))
-   (cons 'POP  (instr 20 "POP Rd" 2))
-
-   (cons 'CPI  (instr 21 "CPI" 1))
-   (cons 'CPI  (instr 21 "CPI Rd,K" 1))
-   
-   (cons 'CP  (instr 22 "CP" 1))
-   (cons 'CP  (instr 22 "CP Rd,Rr" 1))
-
-   (cons 'CPC  (instr 23 "CPC" 1))
-   (cons 'CPC  (instr 23 "CPC Rd,Rr" 1))
-
-   (cons 'SUB  (instr 240 "SUB" 1))
-   (cons 'SUB  (instr 240 "SUB Rd,Rr" 1))
-
-   (cons 'SUBI  (instr 24 "SUBI" 1))
-   (cons 'SUBI  (instr 24 "SUBI Rd,K" 1))
-
-   (cons 'ADIW  (instr 25 "ADIW" 2))
-   (cons 'ADIW  (instr 25 "ADIW Rd,K" 2))
-
-   (cons 'SBIW  (instr 26 "SBIW" 2))
-   (cons 'SBIW  (instr 26 "SBIW Rd,K" 2))
-
-   (cons 'CBI  (instr 27 "CBI" 2))
-   (cons 'CBI  (instr 27 "CBI A,b" 2))
-   
-   (cons 'SBI  (instr 28 "SBI" 2))
-   (cons 'SBI  (instr 28 "SBI A,b" 2))
-
-   (cons 'SBIC  (instr 29 "SBIC" (list 1 2 3)))
-   (cons 'SBIC  (instr 29 "SBIC A,b" (list 1 2 3)))
-
-   (cons 'SBCI  (instr 30 "SBCI" 1))
-   (cons 'SBCI  (instr 30 "SBCI Rd,K" 1))
-
-   (cons 'SBRC  (instr 31 "SBRC" (list 1 2 3)))
-   (cons 'SBRC  (instr 31 "SBRC Rr,b" (list 1 2 3)))
-
-   (cons 'SBRS  (instr 3100 "SBRS" (list 1 2 3)))
-   (cons 'SBRS  (instr 3100 "SBRS Rr,b" (list 1 2 3)))
-
-   (cons 'BRBC  (instr 32 "BRBC" (list 1 2)))
-   (cons 'BRNE  (instr 3200 "BRNE" (list 1 2)))
-
-   (cons 'BREQ  (instr 33 "BREQ" (list 1 2)))
-
-   (cons 'BRBS  (instr 34 "BRBS" (list 1 2)))
-   
-   (cons 'BRTC  (instr 35 "BRTC" (list 1 2)))
-
-   (cons 'BRTS  (instr 36 "BRTS" (list 1 2)))
-
-   (cons 'BRCC  (instr 37 "BRCC" (list 1 2)))
-
-   (cons 'ADD  (instr 38 "ADD" 1))
-   (cons 'ADD  (instr 38 "ADD Rd,Rr" 1))
-
-   (cons 'ADC  (instr 39 "ADC" 1))
-   (cons 'ADC  (instr 39 "ADC Rd,Rr" 1))
-
-   (cons 'AND  (instr 40 "AND" 1))
-   (cons 'AND  (instr 40 "AND Rd,Rr" 1))
-
-   (cons 'ROR  (instr 41 "ROR" 1))
-   (cons 'ROR  (instr 41 "ROR Rd" 1))
-
-   (cons 'LSR  (instr 42 "LSR" 1))
-   (cons 'LSR  (instr 42 "LSR Rd" 1))
-
-   (cons 'BST  (instr 43 "BST" 1))
-   (cons 'BST  (instr 43 "BST Rd" 1))
-
-   (cons 'CLI  (instr 44 "CLI" 1))
-
-   (cons 'CLC  (instr 45 "CLC" 1))
-
-   (cons 'BCLR  (instr 46 "BCLR" 1))
-   (cons 'CLT  (instr 4600 "CLT" 1))
-
-   (cons 'SEC  (instr 47 "SEC" 1))
-
-   (cons 'BSET  (instr 48 "BSET" 1))
-   (cons 'SET  (instr 4800 "SET" 1))
-
-   (cons 'SBC  (instr 49 "SBC" 1))
-   
-   (cons 'NOP  (instr 50 "NOP" 1))
-
-   (cons 'SWAP  (instr 51 "SWAP" 1))
-   (cons 'SWAP  (instr 51 "SWAP Rd" 1))
-
-   (cons 'MUL  (instr 52 "MUL" 2))
-   (cons 'MUL  (instr 52 "MUL Rd,Rr" 2))
-
-   (cons 'OR  (instr 520 "OR" 1))
-   (cons 'ANDI  (instr 53 "ANDI" 1))
-   (cons 'ANDI  (instr 53 "ANDI Rd,K" 1))
-
-   (cons 'NEG  (instr 54 "NEG" 1))
-   (cons 'NEG  (instr 54 "NEG Rd" 1))
-
-   (cons 'IJMP  (instr 55 "IJMP" 2))
-
-   ))
 
 (define instruction-table (make-hash instructions))
 ;; returns id and plot name of the instruction
