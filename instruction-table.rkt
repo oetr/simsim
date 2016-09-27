@@ -37,6 +37,9 @@
     (list 'MOVW   "MOVW" 1)
     (list 'MOVW   "MOVW Rd,Rr" 1))
    (list
+    (list 'MULS   "MULS" 2)
+    (list 'MULS   "MULS Rd,Rr" 2))
+   (list
     (list 'ST        "ST" 2)
     (list 'STXRr     "ST X,Rr" 2)
     (list 'STX+Rr    "ST X+,Rr" 2)

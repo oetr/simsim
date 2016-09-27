@@ -128,4 +128,30 @@
 (run 1)
 (check-equal? PC (+ saved-pc 3) "CPSE followed by 32-bit insruction")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MULS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (test-MULS r0 r1 val0-unsigned val1-unsigned)
+  (define val0 (2-complement->num 8 val0-unsigned))
+  (define val1 (2-complement->num 8 val1-unsigned))
+  ;; compute expected result
+  (define R (* val0 val1))
+  (define expected-product-low (& R #xff))
+  (define expected-product-high (<<& R -8 #xff))
+  ;; get simulated result
+  (prepare-machine "testMULS" #f)
+  (set-register r0 (num->2-complement 8 val0))
+  (set-register r1 (num->2-complement 8 val1))
+  (run 1)
+  (define product-low (get-register 0))
+  (define product-high (get-register 1))
+  ;; test
+  (check-equal? product-low expected-product-low
+                "MULS product-low is wrong")
+  (check-equal? product-high expected-product-high
+                "MULS product-high is wrong"))
 
+(for ([n-tests 100])
+  (define val0 (random 256))
+  (define val1 (random 256))
+  (test-MULS 16 17 val0 val1))

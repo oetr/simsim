@@ -774,6 +774,28 @@
              (num->hexb Rr+-val)))
   (set! clock-cycles 1))
 
+;; signed 8bit x 8bit multiplication
+(define (avr-MULS Rd-16 Rr-16)
+  (define Rd (+ Rd-16 16))
+  (define Rr (+ Rr-16 16))
+  (when (or (< Rd 16) (> Rd 31))
+    (error 'avr-MULS "Rd should be >= 16 and <= 31"))
+  (when (or (< Rr 16) (> Rr 31))
+    (error 'avr-MULS "Rr should be >= 16 and <= 31"))
+  (define Rd-val (2-complement->num 8 (get-register Rd)))
+  (define Rr-val (2-complement->num 8 (get-register Rr)))
+  (define R (& (* Rd-val Rr-val) #xffff))
+  (set-register 1 (&<< R #xff00 -8))
+  (set-register 0 (& R #xff))
+  (compute-Z R)
+  (if (bitwise-bit-set? R 14) (sr-set-C) (sr-clear-C))
+  (when debug?
+    (print-instruction-uniquely OUT 'MULS)
+    (fprintf OUT "MULS R~a[~a], R~a[~a] ; ~a"
+             Rd Rd-val Rr Rr-val
+             (num->hexb R)))
+  (set! clock-cycles 2))
+
 (define (avr-ORI Rd K)
   (define Rd-val (get-register Rd))
   (define R (ior Rd-val K))
@@ -1260,7 +1282,7 @@
   (make-hash
    (list
     (list #x0100 'MOVW avr-MOVW 2 #f)
-    (list #x0200 'MULS 'avr-MULS 2 #f))))
+    (list #x0200 'MULS avr-MULS 2 #f))))
 ;; opcodes with two 3-bit register Rd and Rr
 (define opcodes-3-bit-Rd-Rr
   (make-hash

@@ -599,4 +599,7 @@ test32BitInstructions:
 testJUMPS:
 	rjmp main
 
+testMULS:
+	muls r16,r17
+
 .end

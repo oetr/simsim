@@ -15,15 +15,19 @@
   (if (<= num #xf) 
       (string-append "0" (num->hex num))
       (num->hex num)))
+;; make signed
 (define (2-complement->num width num)
   (if (! num (- width 1))
         (+ (- (<< 1 (- width 1)))
          (bitwise-bit-field num 0 (- width 1)))
-      num))
+        num))
+;; make unsigned
+(define (num->2-complement width num)
+  (& num (- (expt 2 width) 1)))
 
-(define (num->bytes num (n-bytes 32))
+(define (num->bytes num (n-bits 32))
   (list->bytes 
-   (for/list ([i (range (- (quotient n-bytes 8) 1) -1 -1)])
+   (for/list ([i (range (- (quotient n-bits 8) 1) -1 -1)])
      (<<& num (* i -8) #xff))))
 
 (define (hamming-weight n)
@@ -293,6 +297,15 @@
   (set-register reg (& val #xff)) ;; low value
   (set-register (+ reg 1) (<< val -8)) ;; high value
   )
+;; concatenate two registers
+(define (get-registers . regs)
+  (define result 0)
+  (for ([reg (reverse regs)]
+        [i (length regs)])
+    (printf "~a~n" i)
+    (define reg-val (get-register reg))
+    (set! result (bitwise-ior result (<< reg-val (* i 8)))))
+  result)
 
 (define *sram-prev-byte* 0)
 (define *sram-prev-bit-addr* 0)
