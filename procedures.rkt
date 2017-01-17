@@ -6,7 +6,7 @@
 (define save-hamming-distance? #f)
 (define save-bus? #f)
 (define NOF-INTERMEDIATE-VALUES 3)
-(define INTERMEDIATE-VALUES-N 100000)
+(define INTERMEDIATE-VALUES-N 200000)
 (define INTERMEDIATE-VALUES-BYTES 2)
 (define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
 (define INTERMEDIATE-VALUES-INDEX 0)
@@ -140,27 +140,7 @@
 ;; 6 bit IO port id
 (define mask-A-6 #x060F)
 
-(define (make-opcode-info opcode name proc cycles 32-bit? args)
-  (list opcode name proc cycles 32-bit? args))
-
-(define (opcode-info-opcode opcode-info)
-  (list-ref opcode-info 0))
-
-(define (opcode-info-name opcode-info)
-  (list-ref opcode-info 1))
-
-(define (opcode-info-proc opcode-info)
-  (list-ref opcode-info 2))
-
-(define (opcode-info-cycles opcode-info)
-  (list-ref opcode-info 3))
-
-(define (opcode-info-32-bit? opcode-info)
-  (list-ref opcode-info 4))
-
-(define (opcode-info-args opcode-info)
-  (list-ref opcode-info 5))
-
+(struct opcode-info (opcode name proc cycles 32-bit? args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 16-bit instructions
@@ -836,7 +816,7 @@
   (set-register Rd Rd-new-val)
   (when debug?
     (print-instruction-uniquely OUT 'POP)
-    (fprintf OUT "POP R~a" Rd))
+    (fprintf OUT "POP R~a[~a(~a)]" Rd Rd-new-val (num->hex Rd-new-val)))
   (set! clock-cycles 2))
 
 (define (avr-PUSH Rd)
@@ -1343,11 +1323,12 @@
           (define masks (get-masks mapping))
           (define table (get-table mapping))
           (define mask (bitwise-not (apply ior masks)))
-          (define opcode-info (lookup-opcode (get-table mapping)
-                                             (& opcode mask)))
+          (define an-opcode-info (lookup-opcode (get-table mapping)
+                                                (& opcode mask)))
           (define args (get-args opcode masks))
-          (if opcode-info
-              (append (cons opcode opcode-info) (list args))
+          (if an-opcode-info
+              (apply opcode-info (append (cons opcode an-opcode-info)
+                                         (list args)))
               (loop (cdr tables-and-masks)))))))
 
 ;; convert the flash into prepared procedures
@@ -1358,16 +1339,16 @@
   (define was-32-bit? #f) ;; will ignore the word when "yes"
   (let loop ([addr 0])
     (unless (>= addr FLASHEND)
-      (define opcode-info (decode (flash-get-word addr)))
-      (if (and (not was-32-bit?) opcode-info)
-          (let ([opcode  (opcode-info-opcode opcode-info)]
-                [name    (opcode-info-name opcode-info)]
-                [proc    (opcode-info-proc opcode-info)]
-                [cycles  (opcode-info-cycles opcode-info)]
-                [32-bit? (opcode-info-32-bit? opcode-info)]
-                [args    (opcode-info-args opcode-info)])
+      (define an-opcode-info (decode (flash-get-word addr)))
+      (if (and (not was-32-bit?) an-opcode-info)
+          (let ([opcode  (opcode-info-opcode an-opcode-info)]
+                [name    (opcode-info-name an-opcode-info)]
+                [proc    (opcode-info-proc an-opcode-info)]
+                [cycles  (opcode-info-cycles an-opcode-info)]
+                [32-bit? (opcode-info-32-bit? an-opcode-info)]
+                [args    (opcode-info-args an-opcode-info)])
             ;; 32-bit opcodes need to lookup the next word
-            (when (opcode-info-32-bit? opcode-info)
+            (when (opcode-info-32-bit? an-opcode-info)
               (let ([next-word (flash-get-word (+ addr 1))])
                 (set! was-32-bit? #t)
                 (set! opcode (+ (<< opcode 16) next-word))
@@ -1377,8 +1358,7 @@
                 (set! args (cadr proc-args))))
             ;; copy 
             (define result
-              (make-opcode-info opcode name 
-                                proc cycles 32-bit? args))
+              (opcode-info opcode name proc cycles 32-bit? args))
             (vector-set! procedures addr result))
           (set! was-32-bit? #f))
       (loop (+ addr 1))))
@@ -1410,19 +1390,19 @@
             (+ CURRENT-CLOCK-CYCLE clock-cycles)))))
 
 (define (print-flash-procedures procs)
-  (for ([opcode-info procs]
+  (for ([an-opcode-info procs]
         [i (vector-length procs)])
-    (when opcode-info
-      (define opcode  (opcode-info-opcode  opcode-info))
-      (define name    (opcode-info-name    opcode-info))
-      (define proc    (opcode-info-proc    opcode-info))
-      (define cycles  (opcode-info-cycles  opcode-info))
-      (define 32-bit? (opcode-info-32-bit? opcode-info))
-      (define args    (opcode-info-args    opcode-info))
+    (when an-opcode-info
+      (define opcode  (opcode-info-opcode  an-opcode-info))
+      (define name    (opcode-info-name    an-opcode-info))
+      (define proc    (opcode-info-proc    an-opcode-info))
+      (define cycles  (opcode-info-cycles  an-opcode-info))
+      (define 32-bit? (opcode-info-32-bit? an-opcode-info))
+      (define args    (opcode-info-args    an-opcode-info))
       (printf "~a: ~a ~a ~a ~a ~a ~a~n" 
               (num->hex i) 
               (num->hex opcode)
               name proc cycles 32-bit?
               (map num->hex args)))
-    (unless opcode-info
+    (unless an-opcode-info
       (printf "~a: #f~n" i))))

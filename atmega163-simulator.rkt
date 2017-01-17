@@ -102,7 +102,7 @@
   (for ([l syms-lines])
     (define a-match
       (regexp-match
-       #px"([0-9a-f]+).+?([gl]).+?(\\.text|\\.bss)\t[0-9a-f]+ (.+)$" l))
+       #px"([0-9a-f]+).+?([gl]).+?(\\.text|\\.bss|\\.data)\t[0-9a-f]+ (.+)$" l))
     (when (list? a-match)
       (define gl     (list-ref a-match 2))
       (define type   (list-ref a-match 3))
@@ -112,7 +112,7 @@
         (set! addr (/ addr 2)))
       ;; addresses of static variables in the .bss section
       ;; are shifted, shift them back here
-      (when (string=? type ".bss")
+      (when (or (string=? type ".bss") (string=? type ".data"))
         (set! addr (- addr #x800000)))
       (set! addrs (cons (cons addr   symbol) addrs))
       (set! syms  (cons (cons symbol addr)   syms))))
@@ -234,7 +234,7 @@
 (define (sram-get-byte addr)
   (define address addr)
   (when (>= addr RAMEND)
-    (printf "WARNING: address outside RAMEND ~a~n" (num->hex addr))
+    (printf "WARNING: address outside RAMEND ~a (~a) [PC: ~a]~n" (num->hex addr) addr PC)
     (set! address (modulo (+ addr IO-SIZE) RAMEND)))
   (define data (vector-ref SRAM address))
   ;;(save-intermediate-values address)
@@ -252,8 +252,8 @@
   (when (> data #xff)
     (printf "\"sram-set-byte\" WARNING: expected a byte, got something bigger: ~a <- ~a~n" addr data))
   (define address addr)
-  (when (> addr RAMEND)
-    (print "WARNING: address outside RAMEND~n")
+  (when (>= addr RAMEND)
+    (printf "WARNING: address outside RAMEND ~a [PC: ~a]~n" addr PC)
     (set! address (modulo (+ addr IO-SIZE) RAMEND)))
   (vector-set! SRAM address data)
   ;;(save-intermediate-values address)
