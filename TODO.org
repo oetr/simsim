@@ -1,4 +1,8 @@
 * TODO Next steps
+** Add missing functions
+** Assume installed objdump, don't require user to provide the symbol table
+** Generalize individual debugging info: don't use fprintf
+** Load using "require"
 ** TODO Add Hamming distance to the leakage tracker
 ** Only leak individual bits of the status register once
 ** Add tests for each assembly instruction
