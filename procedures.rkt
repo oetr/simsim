@@ -358,6 +358,22 @@
              b (sr-get-T)))
   (set! clock-cycles 1))
 
+;; Skip if bit in register is cleared
+(define (avr-SBRC Rr b)
+  (define Rr-val (get-register Rr))
+  (define b-val (bit-ref Rr-val b))
+  (when (zero? b-val)
+    (define next-instr (vector-ref PROCEDURES PC))
+    (when (opcode-info-32-bit? next-instr)
+      (inc-pc)
+      (set! clock-cycles (+ clock-cycles 1)))
+    (inc-pc)
+    (set! clock-cycles (+ clock-cycles 1)))
+  (set! clock-cycles (+ clock-cycles 1))
+  (when debug?
+    (print-instruction-uniquely OUT 'SBRC clock-cycles)
+    (fprintf OUT "SBRC R~a[~a],b[~a] ; ~a" Rr Rr-val b (zero? b-val))))
+
 (define (avr-SBRS Rr b)
   (define Rr-val (get-register Rr))
   (define b-val (bit-ref Rr-val b))

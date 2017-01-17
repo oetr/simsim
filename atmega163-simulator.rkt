@@ -565,7 +565,7 @@
 (define << arithmetic-shift)
 (define & bitwise-and)
 (define ior bitwise-ior)
-(define (one? num) (not (zero? num)))
+(define (one? num) (= num 1))
 
 ;; make it easier to access the registers
 (define (get-Rd opcode)
@@ -573,9 +573,6 @@
 (define (get-Rr opcode) 
   (ior (<<& opcode -5 #b10000)
        (& opcode #xf)))
-;; tests
-;;(num->bin (get-Rd #b0000000111110000))
-;;(num->bin (get-Rr #b0000001111111111))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; get register contents and result and compute flags
