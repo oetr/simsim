@@ -6,7 +6,7 @@
 (define save-hamming-distance? #f)
 (define save-bus? #f)
 (define NOF-INTERMEDIATE-VALUES 3)
-(define INTERMEDIATE-VALUES-N 200000)
+(define INTERMEDIATE-VALUES-N 800000)
 (define INTERMEDIATE-VALUES-BYTES 2)
 (define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
 (define INTERMEDIATE-VALUES-INDEX 0)
@@ -862,10 +862,10 @@
 (define (avr-RJMP k-unsigned)
   (define k (2-complement->num 12 k-unsigned))
   (define PC-now PC)
-  (set-pc! (& (+ PC k) #xfff))
+  (set-pc! (& (+ PC k) FLASHEND))
   (when debug?
     (print-instruction-uniquely OUT 'RJMP)
-    (fprintf OUT "RJMP ~a" (num->hex (- (& (+ PC k) #xfff) PC -1))))
+    (fprintf OUT "RJMP ~a" (num->hex (- (& (+ PC k) FLASHEND) PC -1))))
   (set! clock-cycles 2))
 
 (define (avr-ROR Rd)
@@ -1219,7 +1219,7 @@
   (make-hash
    (list
     (list #xFA00 'BST avr-BST 2 #f)
-    (list #xFC00 'SBRC 'avr-SBRC 2 #f)
+    (list #xFC00 'SBRC avr-SBRC 2 #f)
     (list #xFE00 'SBRS avr-SBRS 2 #f))))
 ;; opcodes with a relative 7-bit address k and a register bit number b
 (define opcodes-7-bit-k-b
@@ -1396,7 +1396,7 @@
       (define opcode  (opcode-info-opcode instr))
       (when debug?     
         (fprintf OUT "~a|~a|~a|"
-                 CURRENT-CLOCK-CYCLE (- PC 1) (num->hex opcode)))
+                 CURRENT-CLOCK-CYCLE (num->hex (* (- PC 1) 2)) (num->hex opcode)))
       (apply proc args)
       (when debug?
         (when (and symbol symbol-need-to-print?) 
