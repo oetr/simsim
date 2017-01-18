@@ -43,24 +43,24 @@
 
 (define (hex->flash! a-file)
   (define hex (file->lines (expand-user-path a-file)))
+  (define bytes-so-far 0)
   ;; write data
   (for ([line hex])
     (define len (/ (- (string-length line) 3) 2))
-    ;; Start code
     (define start-code (substring line 0 1))
-    ;; Byte count
     (define byte-count (hex->num (substring line 1 3)))
-    ;; Address
     (define address (hex->num (substring line 3 7)))
-    ;; Record type
     (define record-type (hex->num (substring line 7 9)))
-    ;; Data
     (define end-data-addr (+ 9 (* byte-count 2)))
-    (define data (substring line 9 end-data-addr))
-    ;; Checksum
+    (define data (substring line 9 end-data-addr))    
     (define checksum
       (hex->num 
        (substring line end-data-addr (+ end-data-addr 2))))
+    ;; See whether the binary is bigger than our flash
+    (set! bytes-so-far (+ bytes-so-far byte-count))
+    (when (>= (/ bytes-so-far 2) FLASHEND)
+      (error 'hex->flash! "Binary is bigger than available flash."))
+    ;; compute the checksum
     (define computed-checksum 0)
     (for ([i len])
       (set! computed-checksum 
@@ -73,7 +73,7 @@
            (+ (bitwise-and (bitwise-not computed-checksum) #xff) 1)
            256))
     (when (not (= checksum computed-checksum))
-      (error 'read-hex-file "Checksum wrong: expected ~a, got ~a"
+      (error 'hex->flash! "Checksum wrong: expected ~a, got ~a"
              checksum computed-checksum))
     ;; write the data into the memory
     (for ([i (range 0 (string-length data) 4)])
@@ -88,7 +88,8 @@
                      (arithmetic-shift hb1 8)
                      (arithmetic-shift hb2 4)
                      hb3))
-      (flash-set-word (+ (/ address 2) (/ i 4)) msb-num))))
+      (flash-set-word (+ (/ address 2) (/ i 4)) msb-num)))
+  (printf "read flash: ~a bytes~n" bytes-so-far))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; symbol table reader: avr-objdump -C -t main.elf
@@ -182,7 +183,12 @@
 (define (flash-length) FLASHEND)
 ;; get and set word use word addresses
 (define (flash-get-word addr) (vector-ref FLASH addr))
-(define (flash-set-word addr val) (vector-set! FLASH addr val))
+(define (flash-set-word addr val)
+  (when (>= addr FLASHEND)
+    (error 'flash-set-word
+           "Flash address 0x~a is larger than flash size 0x~a~n"
+           (num->hexb addr) (num->hexb FLASHEND)))
+  (vector-set! FLASH addr val))
 ;; get-byte use byte addresses
 (define *flash-address* 0)
 (define *flash-data* 0)
