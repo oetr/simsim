@@ -178,6 +178,7 @@
 ;; 512 bytes EEPROM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 8Kx16 bits program memory, self-programmable
+;;(define FLASHEND #xffff)
 (define FLASHEND #x1fff)
 (define FLASH (make-vector FLASHEND))
 (define (flash-length) FLASHEND)

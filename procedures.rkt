@@ -5,24 +5,26 @@
 (define save-intermediate-values? #f)
 (define save-hamming-distance? #f)
 (define save-bus? #f)
+(define average-values? #f)
+;; Intermediate values
 (define NOF-INTERMEDIATE-VALUES 3)
 (define INTERMEDIATE-VALUES-N 800000)
-(define INTERMEDIATE-VALUES-BYTES 2)
+;; Data types
+(define DOUBLE-BYTES 8)
+(define INT-BYTES 2)
 (define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
 (define INTERMEDIATE-VALUES-INDEX 0)
-(define SAVED-OPCODE #f)
 (define SAVED-PC 0)
-(define WAS-CALL? #f)
+
+(define saved-before? #f)
+(define saved-in-this-cc? #f)
 
 (define *saved-value-data* (make-bytes
-                            (* INTERMEDIATE-VALUES-N
-                               INTERMEDIATE-VALUES-BYTES)))
+                            (* INTERMEDIATE-VALUES-N DOUBLE-BYTES)))
 (define *saved-value-pc* (make-bytes
-                          (* INTERMEDIATE-VALUES-N
-                             INTERMEDIATE-VALUES-BYTES)))
+                          (* INTERMEDIATE-VALUES-N INT-BYTES)))
 (define *saved-value-cc* (make-bytes
-                          (* INTERMEDIATE-VALUES-N
-                             INTERMEDIATE-VALUES-BYTES)))
+                          (* INTERMEDIATE-VALUES-N INT-BYTES)))
 
 (struct saved-value (data pc cc))
 
@@ -44,26 +46,56 @@
     (set! num (arithmetic-shift num -8)))
   result)
 
-(define (save-values! data pc cc)
-  ;; convert integers to bytes
-  (define data-bytes (uint->bytes data INTERMEDIATE-VALUES-BYTES))
-  (define pc-bytes (uint->bytes pc INTERMEDIATE-VALUES-BYTES))
-  (define cc-bytes (uint->bytes cc INTERMEDIATE-VALUES-BYTES))
-  ;; and save bytes
-  (bytes-copy! *saved-value-data* INTERMEDIATE-VALUES-INDEX
-               data-bytes)
-  (bytes-copy! *saved-value-pc* INTERMEDIATE-VALUES-INDEX
-               pc-bytes)
-  (bytes-copy! *saved-value-cc* INTERMEDIATE-VALUES-INDEX
-               cc-bytes))
+(define *accum-count* 0.0)
+(define *accum-data* 0.0)
+(define *prev-accum-data* 0.0)
+
+(define (divide-intervals start stop n)
+  (if (= start stop)
+      (make-list n stop)
+      (let ([step (/ (- stop start) n 1.0)])
+        (range (+ start step) (+ stop step (- (/ step 10.0))) step))))
+
+(define (save-values! pc cc-prev cc)
+  (when (zero? *accum-count*)
+    (set! *accum-count* 1.0))
+  (define interpolated-data (divide-intervals *prev-accum-data*
+                                              (/ *accum-data* *accum-count*)
+                                              (- cc cc-prev)))
+  (define interpolated-cc (range (+ cc-prev 1) (+ cc 1)))
+  (define interpolated-pc (make-list (- cc cc-prev) pc))
+  (when (or (not (= (length interpolated-data) (length interpolated-cc)))
+            (not (= (length interpolated-data) (length interpolated-pc)))
+            (not (= (length interpolated-cc) (length interpolated-pc))))
+    (printf "data: ~a~npc: ~a~ncc: ~a~n"
+            interpolated-data
+            interpolated-pc
+            interpolated-cc))
+  (for ([data-to-save interpolated-data]
+        [pc-to-save interpolated-pc]
+        [cc-to-save interpolated-cc])
+    (define data-bytes (real->floating-point-bytes data-to-save DOUBLE-BYTES))
+    (define cc-bytes (uint->bytes cc-to-save INT-BYTES))
+    (define pc-bytes (uint->bytes pc-to-save INT-BYTES))
+     (bytes-copy! *saved-value-data*
+                  (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES) data-bytes)
+     (bytes-copy! *saved-value-pc*
+                  (* INTERMEDIATE-VALUES-INDEX INT-BYTES) pc-bytes)
+     (bytes-copy! *saved-value-cc*
+                  (* INTERMEDIATE-VALUES-INDEX INT-BYTES) cc-bytes)
+    (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1)))
+  ;; update accumulated value
+  (set! *prev-accum-data* *accum-data*)
+  (set! *accum-data* 0.0)
+  (set! *accum-count* 0.0))
+
+(define (accumulate-values! data)
+  (set! *accum-data* (+ *accum-data* data))
+  (set! *accum-count* (+ *accum-count* 1.0)))
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
-    (save-values! (hamming-weight data) SAVED-PC CURRENT-CLOCK-CYCLE)
-    ;; (vector-set! INTERMEDIATE-VALUES INTERMEDIATE-VALUES-INDEX
-    ;;              (saved-value data SAVED-PC CURRENT-CLOCK-CYCLE))
-    (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX
-                                       INTERMEDIATE-VALUES-BYTES))
+    (accumulate-values! (hamming-weight data))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
       (define instr (vector-ref PROCEDURES PC))
       (when instr
@@ -73,7 +105,7 @@
 (define (print-with-separator a-file fn (sep ","))
   (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
     (fprintf a-file "~a"
-             (fn (INTERMEDIATE-VALUES-INDEXvector-ref INTERMEDIATE-VALUES i)))
+             (fn (INTERMEDIATE-VALUES-INDEX (vector-ref INTERMEDIATE-VALUES i))))
     (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
       (fprintf a-file "~a" sep)))
   (fprintf a-file "~n"))
@@ -94,9 +126,12 @@
   (for ([num args]) (write-bytes (uint->bytes num 4) a-file)))
 
 (define (write-intermediate-values-bytes a-file)
-  (write-bytes *saved-value-data* a-file 0 INTERMEDIATE-VALUES-INDEX)
-  (write-bytes *saved-value-pc* a-file 0 INTERMEDIATE-VALUES-INDEX)
-  (write-bytes *saved-value-cc* a-file 0 INTERMEDIATE-VALUES-INDEX))
+  (write-bytes *saved-value-data* a-file 0
+               (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES))
+  (write-bytes *saved-value-pc* a-file 0
+               (* INTERMEDIATE-VALUES-INDEX INT-BYTES))
+  (write-bytes *saved-value-cc* a-file 0
+               (* INTERMEDIATE-VALUES-INDEX INT-BYTES)))
 
 (define (intermediate-value-bytes->file a-file
                                         #:exists (exists 'append))
@@ -1385,6 +1420,7 @@
 
 (define (run (n 1))
   (for ([i n])
+    (define saved-pc PC)
     (define symbol (lookup-address PC))
     (define instr (vector-ref PROCEDURES PC))
     (inc-pc)
@@ -1396,12 +1432,17 @@
       (define opcode  (opcode-info-opcode instr))
       (when debug?     
         (fprintf OUT "~a|~a|~a|"
-                 CURRENT-CLOCK-CYCLE (num->hex (* (- PC 1) 2)) (num->hex opcode)))
+                 CURRENT-CLOCK-CYCLE (* (- PC 1) 2)
+                 (num->hex opcode)))
       (apply proc args)
       (when debug?
         (when (and symbol symbol-need-to-print?) 
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
+      (when save-intermediate-values?
+        (save-values! saved-pc CURRENT-CLOCK-CYCLE (+ CURRENT-CLOCK-CYCLE clock-cycles))
+        (when (> clock-cycles 4)
+          (printf "~a: >4~n" CURRENT-CLOCK-CYCLE)))
       (set! CURRENT-CLOCK-CYCLE
             (+ CURRENT-CLOCK-CYCLE clock-cycles)))))
 
