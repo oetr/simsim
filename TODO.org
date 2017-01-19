@@ -1,4 +1,5 @@
 * TODO Next steps
+** Put everything in its right place...
 ** Add missing functions
 ** Assume installed objdump, don't require user to provide the symbol table
 ** Generalize individual debugging info: don't use fprintf
