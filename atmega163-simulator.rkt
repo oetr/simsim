@@ -291,9 +291,6 @@
   (when save-hamming-distance?
     (define reg-prev-val (vector-ref SRAM reg))
     (save-intermediate-values (bitwise-xor reg-prev-val val)))
-  (when save-bus?
-    (save-intermediate-values (bitwise-xor *bus-prev-byte* val))
-    (set! *bus-prev-byte* val))
   (vector-set! SRAM reg val)
   ;;(save-intermediate-values reg)
   (save-intermediate-values val)

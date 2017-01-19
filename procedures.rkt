@@ -4,7 +4,6 @@
 
 (define save-intermediate-values? #f)
 (define save-hamming-distance? #f)
-(define save-bus? #f)
 (define average-values? #f)
 ;; Intermediate values
 (define NOF-INTERMEDIATE-VALUES 3)
@@ -15,9 +14,6 @@
 (define INTERMEDIATE-VALUES (make-vector INTERMEDIATE-VALUES-N))
 (define INTERMEDIATE-VALUES-INDEX 0)
 (define SAVED-PC 0)
-
-(define saved-before? #f)
-(define saved-in-this-cc? #f)
 
 (define *saved-value-data* (make-bytes
                             (* INTERMEDIATE-VALUES-N DOUBLE-BYTES)))
@@ -118,8 +114,9 @@
 (define (intermediate-values->file file-name
                                    #:exists (exists 'append))
   (define a-file (open-output-file (expand-user-path file-name)
-                                   #:exists exists))
-  (write-intermediate-values a-file #:exists exists)
+                                   #:exists exists
+                                   #:mode 'binary))
+  (write-intermediate-values a-file #:exists exists #:mode 'binary)
   (close-output-port a-file))
 
 (define (write-header a-file . args)
@@ -136,7 +133,8 @@
 (define (intermediate-value-bytes->file a-file
                                         #:exists (exists 'append))
   (define a-file (open-output-file (expand-user-path file-name)
-                                   #:exists exists))
+                                   #:exists exists
+                                   #:mode 'binary))
   (print-bytes a-file)
   (close-output-port a-file))
 
