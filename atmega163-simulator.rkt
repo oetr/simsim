@@ -88,8 +88,7 @@
                      (arithmetic-shift hb1 8)
                      (arithmetic-shift hb2 4)
                      hb3))
-      (flash-set-word (+ (/ address 2) (/ i 4)) msb-num)))
-  (printf "read flash: ~a bytes~n" bytes-so-far))
+      (flash-set-word (+ (/ address 2) (/ i 4)) msb-num))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; symbol table reader: avr-objdump -C -t main.elf

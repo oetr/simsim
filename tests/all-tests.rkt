@@ -121,7 +121,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; test branches and 32-bit instructions afterwards
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(prepare-machine "test32BitInstructions" #t)
+(prepare-machine "test32BitInstructions")
 (set-register 30 0)
 (set-register 31 0)
 (define saved-pc PC)
