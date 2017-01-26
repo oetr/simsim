@@ -55,9 +55,10 @@
 (define (save-values! pc cc-prev cc)
   (when (zero? *accum-count*)
     (set! *accum-count* 1.0))
-  (define interpolated-data (divide-intervals *prev-accum-data*
-                                              (/ *accum-data* *accum-count*)
-                                              (- cc cc-prev)))
+  (define interpolated-data (divide-intervals
+                             *prev-accum-data*
+                             (/ *accum-data* *accum-count*)
+                             (- cc cc-prev)))
   (define interpolated-cc (range (+ cc-prev 1) (+ cc 1)))
   (define interpolated-pc (make-list (- cc cc-prev) pc))
   (when (or (not (= (length interpolated-data) (length interpolated-cc)))
@@ -81,7 +82,7 @@
                   (* INTERMEDIATE-VALUES-INDEX INT-BYTES) cc-bytes)
     (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1)))
   ;; update accumulated value
-  (set! *prev-accum-data* *accum-data*)
+  (set! *prev-accum-data* (/ *accum-data* *accum-count*))
   (set! *accum-data* 0.0)
   (set! *accum-count* 0.0))
 
@@ -91,8 +92,10 @@
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
+    ;;(printf "~a: ~a~n" CURRENT-CLOCK-CYCLE (hamming-weight data))
     (accumulate-values! (hamming-weight data))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
+      ;; TODO: do it in the "run" procedure
       (define instr (vector-ref PROCEDURES PC))
       (when instr
         (set! SAVED-PC (- PC 1))))
@@ -1438,7 +1441,8 @@
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
       (when save-intermediate-values?
-        (save-values! saved-pc CURRENT-CLOCK-CYCLE (+ CURRENT-CLOCK-CYCLE clock-cycles))
+        (save-values! saved-pc CURRENT-CLOCK-CYCLE
+                      (+ CURRENT-CLOCK-CYCLE clock-cycles))
         (when (> clock-cycles 4)
           (printf "~a: >4~n" CURRENT-CLOCK-CYCLE)))
       (set! CURRENT-CLOCK-CYCLE
