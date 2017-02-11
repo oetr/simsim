@@ -61,9 +61,12 @@
                              (- cc cc-prev)))
   (define interpolated-cc (range (+ cc-prev 1) (+ cc 1)))
   (define interpolated-pc (make-list (- cc cc-prev) pc))
-  (when (or (not (= (length interpolated-data) (length interpolated-cc)))
-            (not (= (length interpolated-data) (length interpolated-pc)))
-            (not (= (length interpolated-cc) (length interpolated-pc))))
+  (when (or (not (= (length interpolated-data)
+                    (length interpolated-cc)))
+            (not (= (length interpolated-data)
+                    (length interpolated-pc)))
+            (not (= (length interpolated-cc)
+                    (length interpolated-pc))))
     (printf "data: ~a~npc: ~a~ncc: ~a~n"
             interpolated-data
             interpolated-pc
@@ -71,11 +74,13 @@
   (for ([data-to-save interpolated-data]
         [pc-to-save interpolated-pc]
         [cc-to-save interpolated-cc])
-    (define data-bytes (real->floating-point-bytes data-to-save DOUBLE-BYTES))
+    (define data-bytes (real->floating-point-bytes data-to-save
+                                                   DOUBLE-BYTES))
     (define cc-bytes (uint->bytes cc-to-save INT-BYTES))
     (define pc-bytes (uint->bytes pc-to-save INT-BYTES))
     (bytes-copy! *saved-value-data*
-                 (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES) data-bytes)
+                 (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES)
+                 data-bytes)
     (bytes-copy! *saved-value-pc*
                  (* INTERMEDIATE-VALUES-INDEX INT-BYTES) pc-bytes)
     (bytes-copy! *saved-value-cc*
@@ -102,7 +107,8 @@
 (define (print-with-separator a-file fn (sep ","))
   (for ([i (range 0 INTERMEDIATE-VALUES-INDEX)])
     (fprintf a-file "~a"
-             (fn (INTERMEDIATE-VALUES-INDEX (vector-ref INTERMEDIATE-VALUES i))))
+             (fn (INTERMEDIATE-VALUES-INDEX
+                  (vector-ref INTERMEDIATE-VALUES i))))
     (when (< i (- INTERMEDIATE-VALUES-INDEX 1))
       (fprintf a-file "~a" sep)))
   (fprintf a-file "~n"))
@@ -207,8 +213,8 @@
   (compute-H Rd-val Rr-val R 3)
   (when debug?
     (print-instruction-uniquely OUT 'ADC)
-    (fprintf OUT "ADC R~a[~a],R~a[~a],C[~a] ; ~a" 
-             Rd (num->hexb Rd-val) 
+    (fprintf OUT "ADC R~a[~a],R~a[~a],C[~a] ; ~a"
+             Rd (num->hexb Rd-val)
              Rr (num->hexb Rr-val)
              C (num->hexb R)))
   (set! clock-cycles 1))
@@ -226,7 +232,7 @@
   (compute-H Rd-val Rr-val R 3)
   (when debug?
     (print-instruction-uniquely OUT 'ADD)
-    (fprintf OUT "ADD R~a[~a],R~a[~a] ; ~a" 
+    (fprintf OUT "ADD R~a[~a],R~a[~a] ; ~a"
              Rd (num->hexb Rd-val)
              Rr (num->hexb Rr-val)
              (num->hexb R)))
@@ -243,7 +249,8 @@
   (compute-Z R)
   (when debug?
     (print-instruction-uniquely OUT 'AND)
-    (fprintf OUT "AND R~a[~a],R~a[~a]" Rd (num->hex Rd-val) Rr (num->hex Rr-val)))
+    (fprintf OUT "AND R~a[~a],R~a[~a]"
+             Rd (num->hex Rd-val) Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
 
@@ -283,8 +290,8 @@
   (compute-Z R)
   (when debug?
     (print-instruction-uniquely OUT 'OR)
-    (fprintf OUT "OR R~a[~a],R~a[~a] ; ~a" 
-             Rd (num->hex Rd-val) 
+    (fprintf OUT "OR R~a[~a],R~a[~a] ; ~a"
+             Rd (num->hex Rd-val)
              Rr (num->hex Rr-val)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -305,7 +312,7 @@
   (when debug?
     (print-instruction-uniquely OUT 'SBC)
     (fprintf OUT "SBC R~a[~a],R~a[~a],C[~a] ; ~a"
-             Rd (num->hex Rd-val) 
+             Rd (num->hex Rd-val)
              Rr (num->hex Rr-val) C
              (num->hex R)))
   (set! clock-cycles 1))
@@ -323,8 +330,8 @@
   (compute-C Rd-val Rr-val R)
   (when debug?
     (print-instruction-uniquely OUT 'SUB)
-    (fprintf OUT "SUB R~a[~a],R~a[~a] ; ~a" 
-             Rd (num->hex Rd-val) 
+    (fprintf OUT "SUB R~a[~a],R~a[~a] ; ~a"
+             Rd (num->hex Rd-val)
              Rr (num->hex Rr-val)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -341,7 +348,7 @@
   (when debug?
     (print-instruction-uniquely OUT 'ANDI)
     (fprintf OUT "ANDI R~a[~a],K[~a] ; ~a"
-             Rd (num->hex Rd-val) 
+             Rd (num->hex Rd-val)
              (num->hex K)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -387,7 +394,7 @@
   (if (! Rd-val b) (sr-set-T) (sr-clear-T))
   (when debug?
     (print-instruction-uniquely OUT 'BST)
-    (fprintf OUT "BST R~a[~a],b[~a] ; ~a" 
+    (fprintf OUT "BST R~a[~a],b[~a] ; ~a"
              Rd (num->hex Rd-val)
              b (sr-get-T)))
   (set! clock-cycles 1))
@@ -406,7 +413,8 @@
   (set! clock-cycles (+ clock-cycles 1))
   (when debug?
     (print-instruction-uniquely OUT 'SBRC clock-cycles)
-    (fprintf OUT "SBRC R~a[~a],b[~a] ; ~a" Rr Rr-val b (zero? b-val))))
+    (fprintf OUT "SBRC R~a[~a],b[~a] ; ~a"
+             Rr Rr-val b (zero? b-val))))
 
 (define (avr-SBRS Rr b)
   (define Rr-val (get-register Rr))
@@ -421,7 +429,8 @@
   (set! clock-cycles (+ clock-cycles 1))
   (when debug?
     (print-instruction-uniquely OUT 'SBRS clock-cycles)
-    (fprintf OUT "SBRS R~a[~a],b[~a] ; ~a" Rr Rr-val b (one? b-val))))
+    (fprintf OUT "SBRS R~a[~a],b[~a] ; ~a"
+             Rr Rr-val b (one? b-val))))
 
 (define (avr-CBI A b)
   (io-clear-bit A b)
@@ -443,7 +452,7 @@
   (when debug?
     (print-instruction-uniquely OUT 'CP)
     (fprintf OUT "CP R~a[~a],R~a[~a] ; ~a"
-             Rd (num->hex Rd-val) 
+             Rd (num->hex Rd-val)
              Rr (num->hex Rr-val)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -458,10 +467,10 @@
                  (& (bit-ref R 3) (n-bit-ref Rd-val 3))))
       (sr-set-H) (sr-clear-H))
   (if (one? (ior (& (bit-ref Rd-val 7)
-                    (n-bit-ref Rr-val 7) 
+                    (n-bit-ref Rr-val 7)
                     (n-bit-ref R 7))
                  (& (n-bit-ref Rd-val 7)
-                    (bit-ref Rr-val 7) 
+                    (bit-ref Rr-val 7)
                     (bit-ref R 7))))
       (sr-set-V) (sr-clear-V))
   (if (! R 7) (sr-set-N) (sr-clear-N))
@@ -477,9 +486,9 @@
       (sr-set-C) (sr-clear-C))
   (when debug?
     (print-instruction-uniquely OUT 'CPC)
-    (fprintf OUT "CPC R~a[~a],R~a[~a],C[~a] ; ~a" 
+    (fprintf OUT "CPC R~a[~a],R~a[~a],C[~a] ; ~a"
              Rd (num->hex Rd-val)
-             Rr (num->hex Rr-val) 
+             Rr (num->hex Rr-val)
              C (num->hex R)))
   (set! clock-cycles 1))
 
@@ -492,10 +501,10 @@
                  (& (bit-ref result 3) (n-bit-ref Rd-val 3))))
       (sr-set-H) (sr-clear-H))
   (if (one? (ior (& (bit-ref Rd-val 7)
-                    (n-bit-ref K 7) 
+                    (n-bit-ref K 7)
                     (n-bit-ref result 7))
                  (& (n-bit-ref Rd-val 7)
-                    (bit-ref K 7) 
+                    (bit-ref K 7)
                     (bit-ref result 7))))
       (sr-set-V) (sr-clear-V))
   (if (! result 7) (sr-set-N) (sr-clear-N))
@@ -505,7 +514,8 @@
   (if (> K Rd-val) (sr-set-C) (sr-clear-C))
   (when debug?
     (print-instruction-uniquely OUT 'CPI)
-    (fprintf OUT "CPI R~a[~a],~a ; ~a" Rd (num->hex Rd-val) (num->hex K) (num->hex result)))
+    (fprintf OUT "CPI R~a[~a],~a ; ~a"
+             Rd (num->hex Rd-val) (num->hex K) (num->hex result)))
   (set! clock-cycles 1))
 
 
@@ -537,7 +547,7 @@
   (compute-Z R)
   (when debug?
     (print-instruction-uniquely OUT 'DEC)
-    (fprintf OUT "DEC R~a[~a] ; ~a" 
+    (fprintf OUT "DEC R~a[~a] ; ~a"
              Rd (num->hex Rd-val) (num->hex R)))
   (set! clock-cycles 1))
 
@@ -553,7 +563,7 @@
   (if (zero? R) (sr-set-Z) (sr-clear-Z))
   (when debug?
     (print-instruction-uniquely OUT 'EOR)
-    (fprintf OUT "EOR R~a[~a],R~a[~a] ; ~a" 
+    (fprintf OUT "EOR R~a[~a],R~a[~a] ; ~a"
              Rd (num->hex Rd-val)
              Rr (num->hex Rr-val)
              (num->hex R)))
@@ -580,7 +590,8 @@
   (set-register Rd x-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX)
-    (fprintf OUT "LD R~a[~a],X[~a]" Rd (num->hex Rd-val) (num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X[~a]"
+             Rd (num->hex Rd-val) (num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-X-decr Rd)
@@ -591,7 +602,8 @@
   (dec-x)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX-)
-    (fprintf OUT "LD R~a[~a],X-[~a]" Rd (num->hex Rd-val)(num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X-[~a]"
+             Rd (num->hex Rd-val)(num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-X-incr Rd)
@@ -602,7 +614,8 @@
   (inc-x)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdX+)
-    (fprintf OUT "LD R~a[~a],X+[~a]" Rd (num->hex Rd-val)(num->hex x-val)))
+    (fprintf OUT "LD R~a[~a],X+[~a]"
+             Rd (num->hex Rd-val)(num->hex x-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDD-Y Rd q)
@@ -612,7 +625,8 @@
   (set-register Rd val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+q)
-    (fprintf OUT "LD R~a[~a],Y+~a[~a]" Rd (num->hex Rd-val)q (num->hex val)))
+    (fprintf OUT "LD R~a[~a],Y+~a[~a]"
+             Rd (num->hex Rd-val) q (num->hex val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Y-incr Rd)
@@ -623,7 +637,8 @@
   (inc-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY+)
-    (fprintf OUT "LD R~a[~a],Y+[~a]" Rd (num->hex Rd-val)(num->hex y-val)))
+    (fprintf OUT "LD R~a[~a],Y+[~a]"
+             Rd (num->hex Rd-val)(num->hex y-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Y-decr Rd)
@@ -634,7 +649,8 @@
   (dec-y)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdY-)
-    (fprintf OUT "LD R~a[~a],Y-[~a]" Rd (num->hex Rd-val)(num->hex y-val)))
+    (fprintf OUT "LD R~a[~a],Y-[~a]"
+             Rd (num->hex Rd-val)(num->hex y-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDD-Z Rd q)
@@ -644,7 +660,8 @@
   (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+q)
-    (fprintf OUT "LD R~a[~a],Z+~a[~a]" Rd (num->hex Rd-val) q (num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z+~a[~a]"
+             Rd (num->hex Rd-val) q (num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Z-decr Rd)
@@ -655,7 +672,8 @@
   (dec-z)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ-)
-    (fprintf OUT "LD R~a[~a],Z-[~a]" Rd (num->hex Rd-val)(num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z-[~a]"
+             Rd (num->hex Rd-val)(num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LD-Z-incr Rd)
@@ -666,7 +684,8 @@
   (inc-z)
   (when debug?
     (print-instruction-uniquely OUT 'LDRdZ+)
-    (fprintf OUT "LD R~a[~a],Z+[~a]" Rd (num->hex Rd-val)(num->hex z-val)))
+    (fprintf OUT "LD R~a[~a],Z+[~a]"
+             Rd (num->hex Rd-val)(num->hex z-val)))
   (set! clock-cycles 2))
 
 (define (avr-LDI Rd-16 K)
@@ -675,7 +694,8 @@
   (set-register Rd K)
   (when debug?
     (print-instruction-uniquely OUT 'LDI)
-    (fprintf OUT "LDI R~a[~a],K[~a]" Rd (num->hex Rd-val) (num->hex K)))
+    (fprintf OUT "LDI R~a[~a],K[~a]"
+             Rd (num->hex Rd-val) (num->hex K)))
   (set! clock-cycles 1))
 
 (define (avr-LDS-get-args Rd k)
@@ -685,7 +705,8 @@
   (set-register Rr k-val)
   (when debug?
     (print-instruction-uniquely OUT 'LDS)
-    (fprintf OUT "LDS R~a,(~a)[~a]" Rr (num->hex k) (num->hex k-val)))
+    (fprintf OUT "LDS R~a,(~a)[~a]"
+             Rr (num->hex k) (num->hex k-val)))
   (inc-pc)
   (set! clock-cycles 2))
 
@@ -696,7 +717,8 @@
   (set-register 0 z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
-    (fprintf OUT "LPM R0[~a],Z[~a]" (num->hex Rd-val) (num->hex z-val)))
+    (fprintf OUT "LPM R0[~a],Z[~a]"
+             (num->hex Rd-val) (num->hex z-val)))
   (set! clock-cycles 3))
 
 (define (avr-LPM-Z Rd)
@@ -706,7 +728,8 @@
   (set-register Rd z-val)
   (when debug?
     (print-instruction-uniquely OUT 'LPM)
-    (fprintf OUT "LPM R~a[~a],Z[~a]" Rd (num->hex Rd-val) (num->hex z-val)))
+    (fprintf OUT "LPM R~a[~a],Z[~a]"
+             Rd (num->hex Rd-val) (num->hex z-val)))
   (set! clock-cycles 3))
 
 (define (avr-LPM-Z-incr Rd)
@@ -724,7 +747,7 @@
   (define Rd-val (get-register Rd))
   (define R (& (- Rd-val) #xff))
   (set-register Rd R)
-  (if (one? (ior (bit-ref R 3) 
+  (if (one? (ior (bit-ref R 3)
                  (n-bit-ref Rd-val 3)))
       (sr-set-H) (sr-clear-H))
   (if (= R #x80) (sr-set-V)(sr-clear-V))
@@ -734,8 +757,8 @@
   (if (zero? R) (sr-clear-C)(sr-set-C))
   (when debug?
     (print-instruction-uniquely OUT 'NEG)
-    (fprintf OUT "NEG R~a[~a] ; ~a" 
-             Rd 
+    (fprintf OUT "NEG R~a[~a] ; ~a"
+             Rd
              (num->hex Rd-val)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -753,8 +776,8 @@
       (sr-set-S) (sr-clear-S))
   (when debug?
     (print-instruction-uniquely OUT 'LSR)
-    (fprintf OUT "LSR R~a[~a] ; ~a" 
-             Rd 
+    (fprintf OUT "LSR R~a[~a] ; ~a"
+             Rd
              (num->hex Rd-val)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -781,8 +804,8 @@
   (when debug?
     (print-instruction-uniquely OUT 'MUL)
     (fprintf OUT "MUL R~a[~a],R~a[~a] ; ~a"
-             Rd (num->hex Rd-val) 
-             Rr (num->hex Rr-val) 
+             Rd (num->hex Rd-val)
+             Rr (num->hex Rr-val)
              (num->hex R)))
   (set! clock-cycles 2))
 
@@ -797,8 +820,8 @@
   (set-register Rd+ Rr+-val)
   (when debug?
     (print-instruction-uniquely OUT 'MOVW)
-    (fprintf OUT "MOVW R~a:R~a,R~a[~a]:R~a[~a]"  
-             Rd Rd+ Rr 
+    (fprintf OUT "MOVW R~a:R~a,R~a[~a]:R~a[~a]"
+             Rd Rd+ Rr
              (num->hexb Rr-val)
              Rr+
              (num->hexb Rr+-val)))
@@ -837,7 +860,7 @@
   (when debug?
     (print-instruction-uniquely OUT 'ORI)
     (fprintf OUT "ORI R~a[~a],K[~a] ; ~a"
-             Rd (num->hex Rd-val) 
+             Rd (num->hex Rd-val)
              (num->hex K)
              (num->hex R)))
   (set! clock-cycles 1))
@@ -847,7 +870,7 @@
   (set-register Rd A-val)
   (when debug?
     (print-instruction-uniquely OUT 'IN)
-    (fprintf OUT "IN R~a,A[~a] ; [~a]" 
+    (fprintf OUT "IN R~a,A[~a] ; [~a]"
              Rd (num->hex A) (num->hex A-val)))
   (set! clock-cycles 1))
 
@@ -856,7 +879,7 @@
   (io-set A Rr-val)
   (when debug?
     (print-instruction-uniquely OUT 'OUT)
-    (fprintf OUT "OUT A[~a],R~a[~a]" 
+    (fprintf OUT "OUT A[~a],R~a[~a]"
              (num->hex A) Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
 
@@ -866,7 +889,8 @@
   (set-register Rd Rd-new-val)
   (when debug?
     (print-instruction-uniquely OUT 'POP)
-    (fprintf OUT "POP R~a[~a(~a)]" Rd Rd-new-val (num->hex Rd-new-val)))
+    (fprintf OUT "POP R~a[~a(~a)]"
+             Rd Rd-new-val (num->hex Rd-new-val)))
   (set! clock-cycles 2))
 
 (define (avr-PUSH Rd)
@@ -899,7 +923,8 @@
   (set-pc! (& (+ PC k) FLASHEND))
   (when debug?
     (print-instruction-uniquely OUT 'RJMP)
-    (fprintf OUT "RJMP ~a" (num->hex (- (& (+ PC k) FLASHEND) PC -1))))
+    (fprintf OUT "RJMP ~a"
+             (num->hex (- (& (+ PC k) FLASHEND) PC -1))))
   (set! clock-cycles 2))
 
 (define (avr-ROR Rd)
@@ -916,7 +941,8 @@
   (compute-Z R)
   (when debug?
     (print-instruction-uniquely OUT 'ROR)
-    (fprintf OUT "ROR R~a[~a] ; ~a" Rd (num->hex Rd-val) (num->hex R)))
+    (fprintf OUT "ROR R~a[~a] ; ~a"
+             Rd (num->hex Rd-val) (num->hex R)))
   (set! clock-cycles 1))
 
 (define (avr-SBCI Rd-4-bytes K)
@@ -933,7 +959,7 @@
   (compute-C Rd-val K R 7)
   (when debug?
     (print-instruction-uniquely OUT 'SBCI)
-    (fprintf OUT "SBCI R~a[~a],K[~a] ; ~a" 
+    (fprintf OUT "SBCI R~a[~a],K[~a] ; ~a"
              Rd (num->hex Rd-val) (num->hex K) (num->hex R)))
   (set! clock-cycles 1)
   )
@@ -998,8 +1024,8 @@
     (print-instruction-uniquely OUT 'SBIW)
     (fprintf OUT "SBIW R~a:R~a[~a],K[~a] ; ~a"
              Rd Rd+
-             (num->hex Rd-val) 
-             (num->hex K) 
+             (num->hex Rd-val)
+             (num->hex K)
              (num->hex R)))
   (set! clock-cycles 2))
 
@@ -1085,7 +1111,7 @@
   (set! clock-cycles 2))
 
 (define (avr-ST-Z-decr Rr)
-  (define z (get-z))         
+  (define z (get-z))       
   (define Rr-val (get-register Rr))
   (sram-set-byte z Rr-val)
   (dec-z)
@@ -1095,7 +1121,7 @@
   (set! clock-cycles 2))
 
 (define (avr-ST-Z-incr Rr)
-  (define z (get-z))         
+  (define z (get-z))       
   (define Rr-val (get-register Rr))
   (sram-set-byte z Rr-val)
   (inc-z)
@@ -1111,7 +1137,8 @@
   (define Rr-val (get-register Rr))
   (when debug?
     (print-instruction-uniquely OUT 'STS)
-    (fprintf OUT "STS (~a),R~a[~a]" (num->hex k) Rr (num->hex Rr-val)))
+    (fprintf OUT "STS (~a),R~a[~a]"
+             (num->hex k) Rr (num->hex Rr-val)))
   (sram-set-byte k Rr-val)
   (inc-pc)
   (set! clock-cycles 2))
@@ -1122,14 +1149,14 @@
   (define R (& (- Rd-val K) #xff))
   (set-register Rd R)
   (compute-H Rd-val K R 3)
-  (compute-V Rd-val K R 7)  
+  (compute-V Rd-val K R 7)
   (compute-N R 7)
   (compute-S)
   (compute-Z R)
   (compute-C Rd-val K R 7)
   (when debug?
     (print-instruction-uniquely OUT 'SUBI)
-    (fprintf OUT "SUBI R~a[~a],K[~a] ; ~a" 
+    (fprintf OUT "SUBI R~a[~a],K[~a] ; ~a"
              Rd (num->hex Rd-val) (num->hex K) (num->hex R)))
   (set! clock-cycles 1))
 
@@ -1140,7 +1167,7 @@
   (set-register Rd R)
   (when debug?
     (print-instruction-uniquely OUT 'BLD)
-    (fprintf OUT "BLD R~a[~a],b[~a] ; ~a" 
+    (fprintf OUT "BLD R~a[~a],b[~a] ; ~a"
              Rd (num->hex Rd-val) (num->hex b) (num->hex R)))
   (set! clock-cycles 1))
 
@@ -1255,7 +1282,7 @@
     (list #xFA00 'BST avr-BST 2 #f)
     (list #xFC00 'SBRC avr-SBRC 2 #f)
     (list #xFE00 'SBRS avr-SBRS 2 #f))))
-;; opcodes with a relative 7-bit address k and a register bit number b
+;; opcodes with relative 7-bit address k and register bit number b
 (define opcodes-7-bit-k-b
   (make-hash
    (list
@@ -1402,11 +1429,11 @@
               (let ([next-word (flash-get-word (+ addr 1))])
                 (set! was-32-bit? #t)
                 (set! opcode (+ (<< opcode 16) next-word))
-                (define proc-args 
+                (define proc-args
                   (apply proc (append args (list next-word))))
                 (set! proc (car proc-args))
                 (set! args (cadr proc-args))))
-            ;; copy 
+            ;; copy
             (define result
               (opcode-info opcode name proc cycles 32-bit? args))
             (vector-set! procedures addr result))
@@ -1429,13 +1456,13 @@
       (define args    (opcode-info-args instr))
       (define proc    (opcode-info-proc instr))
       (define opcode  (opcode-info-opcode instr))
-      (when debug?     
+      (when debug?   
         (fprintf OUT "~a|~a|~a|"
                  CURRENT-CLOCK-CYCLE (* (- PC 1) 2)
                  (num->hex opcode)))
       (apply proc args)
       (when debug?
-        (when (and symbol symbol-need-to-print?) 
+        (when (and symbol symbol-need-to-print?)
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
       (when save-intermediate-values?
@@ -1456,8 +1483,8 @@
       (define cycles  (opcode-info-cycles  an-opcode-info))
       (define 32-bit? (opcode-info-32-bit? an-opcode-info))
       (define args    (opcode-info-args    an-opcode-info))
-      (printf "~a: ~a ~a ~a ~a ~a ~a~n" 
-              (num->hex i) 
+      (printf "~a: ~a ~a ~a ~a ~a ~a~n"
+              (num->hex i)
               (num->hex opcode)
               name proc cycles 32-bit?
               (map num->hex args)))

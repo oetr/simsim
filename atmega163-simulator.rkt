@@ -12,7 +12,7 @@
 (define (num->bin num) (number->string num 2))
 ;; add a leading "0" to a number and convert it into a string
 (define (num->hexb num)
-  (if (<= num #xf) 
+  (if (<= num #xf)
       (string-append "0" (num->hex num))
       (num->hex num)))
 ;; make signed
@@ -26,7 +26,7 @@
   (& num (- (expt 2 width) 1)))
 
 (define (num->bytes num (n-bits 32))
-  (list->bytes 
+  (list->bytes
    (for/list ([i (range (- (quotient n-bits 8) 1) -1 -1)])
      (<<& num (* i -8) #xff))))
 
@@ -52,9 +52,9 @@
     (define address (hex->num (substring line 3 7)))
     (define record-type (hex->num (substring line 7 9)))
     (define end-data-addr (+ 9 (* byte-count 2)))
-    (define data (substring line 9 end-data-addr))    
+    (define data (substring line 9 end-data-addr))   
     (define checksum
-      (hex->num 
+      (hex->num
        (substring line end-data-addr (+ end-data-addr 2))))
     ;; See whether the binary is bigger than our flash
     (set! bytes-so-far (+ bytes-so-far byte-count))
@@ -63,13 +63,13 @@
     ;; compute the checksum
     (define computed-checksum 0)
     (for ([i len])
-      (set! computed-checksum 
+      (set! computed-checksum
             (+ computed-checksum
-               (hex->num (substring line 
-                                    (+ (* i 2) 1) 
+               (hex->num (substring line
+                                    (+ (* i 2) 1)
                                     (+ (* i 2) 3))))))
     (set! computed-checksum
-          (modulo 
+          (modulo
            (+ (bitwise-and (bitwise-not computed-checksum) #xff) 1)
            256))
     (when (not (= checksum computed-checksum))
@@ -159,12 +159,14 @@
   r)
 
 (define (print-symbols)
-  (define mapping (sort (hash->list SYMBOL-TABLE) 
+  (define mapping (sort (hash->list SYMBOL-TABLE)
                         (lambda (a b) (string<? (car a) (car b)))))
   (for([element mapping])
     (printf "~a: ~a~n" (car element) (num->hex (cdr element)))))
 (define (print-addrs)
-  (define mapping (sort (hash->list ADDRESS-TABLE) (lambda (a b) (< (car a) (car b)))))
+  (define mapping (sort (hash->list ADDRESS-TABLE)
+                        (lambda (a b)
+                          (< (car a) (car b)))))
   (for([element mapping])
     (printf "~a: ~a~n" (num->hex (car element))  (cdr element))))
 
@@ -220,7 +222,7 @@
   (define accumulated-bytes (bytes))
   (for ([addr FLASHEND])
     (when (zero? (modulo addr #x10))
-      (printf "~a~n~a " 
+      (printf "~a~n~a "
               accumulated-bytes (num->hex (quotient addr #x10)))
       (when (< (quotient addr #x10) #x10) (printf " "))
       (set! accumulated-bytes (bytes)))
@@ -240,7 +242,8 @@
 (define (sram-get-byte addr)
   (define address addr)
   (when (>= addr RAMEND)
-    (printf "WARNING: address outside RAMEND ~a (~a) [PC: ~a]~n" (num->hex addr) addr PC)
+    (printf "WARNING: address outside RAMEND ~a (~a) [PC: ~a]~n"
+            (num->hex addr) addr PC)
     (set! address (modulo (+ addr IO-SIZE) RAMEND)))
   (define data (vector-ref SRAM address))
   ;;(save-intermediate-values address)
@@ -275,7 +278,7 @@
 
 (define (get-register reg)
   (when (>= reg 32)
-    (error "ERROR: register higher than 32 ~a~n" 
+    (error "ERROR: register higher than 32 ~a~n"
            (num->hex reg)))
   (define data (vector-ref SRAM reg))
   ;;(save-intermediate-values reg)
@@ -285,7 +288,7 @@
 (define (set-register reg val)
   (when (>= reg 32)
     (error 'set-register
-           "ERROR: register higher than 32 ~a~n" 
+           "ERROR: register higher than 32 ~a~n"
            (num->hex reg)))
   (when save-hamming-distance?
     (define reg-prev-val (vector-ref SRAM reg))
@@ -378,7 +381,7 @@
   (define accumulated-bytes (bytes))
   (for ([addr RAMEND])
     (when (zero? (modulo addr #x10))
-      (printf "~a~n~a " 
+      (printf "~a~n~a "
               accumulated-bytes (num->hex (quotient addr #x10)))
       (when (< (quotient addr #x10) #x10) (printf " "))
       (set! accumulated-bytes (bytes)))
@@ -412,7 +415,7 @@
   (define accumulated-bytes (bytes))
   (for ([addr IO-SIZE])
     (when (zero? (modulo addr #x10))
-      (printf "~a~n~a " 
+      (printf "~a~n~a "
               accumulated-bytes (num->hex (quotient addr #xf)))
       (when (< (quotient addr #xf) #x10) (printf " "))
       (set! accumulated-bytes (bytes)))
@@ -518,7 +521,7 @@
 (define (reset-machine (filename #f) #:keep-flash? (keep-flash? #f))
   (unless keep-flash?
     (for ([i FLASHEND]) (vector-set! FLASH i 0)))
-  (set! SRAM (make-vector RAMEND #x00)) 
+  (set! SRAM (make-vector RAMEND #x00))
   (for ([i IO-SIZE]) (vector-set! SRAM i 0))
   (set! CURRENT-CLOCK-CYCLE 0)
   (set! PREVIOUS-CLOCK-CYCLE #f)
@@ -535,7 +538,7 @@
                    (not (port-closed? OUT))
                    (not (eq? OUT (current-output-port))))
           (close-output-port OUT))
-        (set! OUT (open-output-file (expand-user-path filename) 
+        (set! OUT (open-output-file (expand-user-path filename)
                                     #:exists 'replace)))
       (begin
         (when (and (port? OUT)
@@ -545,7 +548,7 @@
         (set! OUT (current-output-port)))))
 
 (define (close-if-file a-port)
-  (when (and (port? OUT) 
+  (when (and (port? OUT)
              (not (port-closed? OUT))
              (not (eq? OUT (current-output-port))))
     (close-output-port OUT)))
@@ -573,7 +576,7 @@
 ;; make it easier to access the registers
 (define (get-Rd opcode)
   (<<& opcode -4 #b11111))
-(define (get-Rr opcode) 
+(define (get-Rr opcode)
   (ior (<<& opcode -5 #b10000)
        (& opcode #xf)))
 
@@ -587,10 +590,10 @@
              (sr-set-H) (sr-clear-H)))
 (define (compute-V r1 r2 result (bit 7))
   (if (one? (ior (& (bit-ref r1 bit)
-                    (n-bit-ref r2 bit) 
+                    (n-bit-ref r2 bit)
                     (n-bit-ref result bit))
                  (& (n-bit-ref r1 bit)
-                    (bit-ref r2 bit) 
+                    (bit-ref r2 bit)
                     (bit-ref result bit))))
       (sr-set-V) (sr-clear-V)))
 (define (compute-N result (bit 7))
