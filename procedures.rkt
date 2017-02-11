@@ -74,12 +74,12 @@
     (define data-bytes (real->floating-point-bytes data-to-save DOUBLE-BYTES))
     (define cc-bytes (uint->bytes cc-to-save INT-BYTES))
     (define pc-bytes (uint->bytes pc-to-save INT-BYTES))
-     (bytes-copy! *saved-value-data*
-                  (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES) data-bytes)
-     (bytes-copy! *saved-value-pc*
-                  (* INTERMEDIATE-VALUES-INDEX INT-BYTES) pc-bytes)
-     (bytes-copy! *saved-value-cc*
-                  (* INTERMEDIATE-VALUES-INDEX INT-BYTES) cc-bytes)
+    (bytes-copy! *saved-value-data*
+                 (* INTERMEDIATE-VALUES-INDEX DOUBLE-BYTES) data-bytes)
+    (bytes-copy! *saved-value-pc*
+                 (* INTERMEDIATE-VALUES-INDEX INT-BYTES) pc-bytes)
+    (bytes-copy! *saved-value-cc*
+                 (* INTERMEDIATE-VALUES-INDEX INT-BYTES) cc-bytes)
     (set! INTERMEDIATE-VALUES-INDEX (+ INTERMEDIATE-VALUES-INDEX 1)))
   ;; update accumulated value
   (set! *prev-accum-data* (/ *accum-data* *accum-count*))
@@ -92,10 +92,8 @@
 
 (define (save-intermediate-values data)
   (when save-intermediate-values?
-    ;;(printf "~a: ~a~n" CURRENT-CLOCK-CYCLE (hamming-weight data))
     (accumulate-values! (hamming-weight data))
     (unless (eq? CURRENT-CLOCK-CYCLE PREVIOUS-CLOCK-CYCLE)
-      ;; TODO: do it in the "run" procedure
       (define instr (vector-ref PROCEDURES PC))
       (when instr
         (set! SAVED-PC (- PC 1))))
@@ -640,7 +638,7 @@
   (set! clock-cycles 2))
 
 (define (avr-LDD-Z Rd q)
-    (define Rd-val (get-register Rd))
+  (define Rd-val (get-register Rd))
   (define z (get-z))
   (define z-val (sram-get-byte (+ z q)))
   (set-register Rd z-val)
