@@ -1,4 +1,8 @@
-(require racket racket/main rackunit)
+(require racket racket/main rackunit racket/system)
+
+;; compile the code before simulating it
+(system "make clean && make")
+
 (require "data.rkt")
 
 ;; TODO: use load for now, change later to "require"
