@@ -1363,7 +1363,6 @@
       (set! target-i (+ target-i 1))))
   result)
 
-
 (define tables-and-masks
   (list
    (list opcodes-no-operands 0)
@@ -1394,19 +1393,21 @@
 ;; map opcode to instruction procedure
 (define (decode opcode)
   (let loop ([tables-and-masks tables-and-masks])
-    (if (empty? tables-and-masks)
-        #f ;; opcode unknown (probably data, or 32-bit instr)
-        (let ([mapping (car tables-and-masks)])
-          (define masks (get-masks mapping))
-          (define table (get-table mapping))
-          (define mask (bitwise-not (apply ior masks)))
-          (define an-opcode-info (lookup-opcode (get-table mapping)
-                                                (& opcode mask)))
-          (define args (get-args opcode masks))
-          (if an-opcode-info
-              (apply opcode-info (append (cons opcode an-opcode-info)
-                                         (list args)))
-              (loop (cdr tables-and-masks)))))))
+    ;; opcode unknown (probably data, or 32-bit instr)
+    (cond [(empty? tables-and-masks) #f]
+          [else
+           (define mapping (car tables-and-masks))
+           (define masks (get-masks mapping))
+           (define table (get-table mapping))
+           (define mask (bitwise-not (apply ior masks)))
+           (define an-opcode-info (lookup-opcode (get-table mapping)
+                                                 (& opcode mask)))
+           (define args (get-args opcode masks))
+           (if an-opcode-info
+               (apply opcode-info (append (cons opcode
+                                                an-opcode-info)
+                                          (list args)))
+               (loop (cdr tables-and-masks)))])))
 
 ;; convert the flash into prepared procedures
 ;; make sure to get args of 32-bit opcodes

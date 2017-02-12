@@ -210,14 +210,14 @@
         [group-id (length instruction-groups)])
     (for ([instruction-data group])
       (set! result
-            (cons 
+            (cons
              (cons (car instruction-data)
-                   (apply instr (cons group-id (cdr instruction-data))))
+                   (apply instr (cons group-id
+                                      (cdr instruction-data))))
              result))))
   (reverse result))
 
 (define instructions (assign-group-id *instruction-groups*))
-
 
 (define instruction-table (make-hash instructions))
 ;; returns id and plot name of the instruction

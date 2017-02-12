@@ -18,9 +18,9 @@
 ;; make signed
 (define (2-complement->num width num)
   (if (! num (- width 1))
-        (+ (- (<< 1 (- width 1)))
+      (+ (- (<< 1 (- width 1)))
          (bitwise-bit-field num 0 (- width 1)))
-        num))
+      num))
 ;; make unsigned
 (define (num->2-complement width num)
   (& num (- (expt 2 width) 1)))
@@ -229,7 +229,7 @@
     (define byte (flash-get-byte addr))
     (define char (bytes byte))
     (when (or (< byte 35) (> byte 126))
-        (set! char #"."))
+      (set! char #"."))
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
     (printf "~a " (dots-when-zero byte)))
   (printf "~a~n " accumulated-bytes))
@@ -349,7 +349,7 @@
                      (get-register 30)))
 (define (inc-x)
   (define x (+ (get-x)
- 1))
+               1))
   (set-register 27 (<<& x -8 #xff))
   (set-register 26 (& x #xff)))
 (define (dec-x)
@@ -388,7 +388,7 @@
     (define byte (sram-get-byte addr))
     (define char (bytes byte))
     (when (or (< byte 35) (> byte 126))
-        (set! char #"."))
+      (set! char #"."))
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
     (printf "~a " (dots-when-zero byte)))
   (printf "~a~n " accumulated-bytes))
@@ -422,7 +422,7 @@
     (define byte (io-get addr))
     (define char (bytes byte))
     (when (or (< byte 35) (> byte 126))
-        (set! char #"."))
+      (set! char #"."))
     (set! accumulated-bytes (bytes-append accumulated-bytes char))
     (printf "~a " (dots-when-zero byte)))
   (printf "~a~n " accumulated-bytes))
@@ -542,8 +542,8 @@
                                     #:exists 'replace)))
       (begin
         (when (and (port? OUT)
-                    (not (port-closed? OUT))
-                    (not (eq? OUT (current-output-port))))
+                   (not (port-closed? OUT))
+                   (not (eq? OUT (current-output-port))))
           (close-output-port OUT))
         (set! OUT (current-output-port)))))
 
@@ -587,7 +587,8 @@
   (if (one? (ior (& (n-bit-ref r1 bit) (bit-ref r2 bit))
                  (& (bit-ref r2 bit) (bit-ref result bit))
                  (& (bit-ref result bit) (n-bit-ref r1 bit))))
-             (sr-set-H) (sr-clear-H)))
+      (sr-set-H) (sr-clear-H)))
+
 (define (compute-V r1 r2 result (bit 7))
   (if (one? (ior (& (bit-ref r1 bit)
                     (n-bit-ref r2 bit)
@@ -596,13 +597,17 @@
                     (bit-ref r2 bit)
                     (bit-ref result bit))))
       (sr-set-V) (sr-clear-V)))
+
 (define (compute-N result (bit 7))
   (if (! result bit) (sr-set-N) (sr-clear-N)))
+
 (define (compute-S)
   (if (= (bitwise-xor (sr-get-N) (sr-get-V)) 1)
       (sr-set-S) (sr-clear-S)))
+
 (define (compute-Z result)
   (if (zero? result) (sr-set-Z) (sr-clear-Z)))
+
 (define (compute-C r1 r2 result (bit 7))
   (if (one? (ior (& (n-bit-ref r1 bit)
                     (bit-ref r2 bit))
@@ -620,10 +625,6 @@
                  (& (n-bit-ref result bit)
                     (bit-ref r1 bit))))
       (sr-set-C) (sr-clear-C)))
-
-;; TODO: make sure to fetch 32-bit instructions properly
-(define (is-two-word-instruction? addr)
-  #f)
 
 (define debug? #f)
 
