@@ -1,5 +1,9 @@
 * TODO Next steps
-** Put everything in its right place...
+** Put everything in its right place
+- Instructions
+- CPU state manipulation
+- Increase the current clock cycle based on the table
+- Reading the hex-file
 ** Add missing functions
 ** Assume installed objdump, don't require user to provide the symbol table
 ** Generalize individual debugging info: don't use fprintf

@@ -1,7 +1,7 @@
 ;;(module data racket
 ;;  (provide print-instruction-uniquely)
 
-(struct instr (id name ccs))
+(struct instr (id name ccs) #:transparent)
 
 ;; lists signify groups that should get the same ID
 ;; simple name, name and used registers, clock cycles

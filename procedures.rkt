@@ -182,9 +182,9 @@
 
 (struct opcode-info (opcode name proc cycles 32-bit? args))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 16-bit instructions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Procedures implementing instructions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (avr-IJMP . _)
   (define z (get-z))
   (set-pc! z)
@@ -252,7 +252,6 @@
     (fprintf OUT "AND R~a[~a],R~a[~a]"
              Rd (num->hex Rd-val) Rr (num->hex Rr-val)))
   (set! clock-cycles 1))
-
 
 (define (avr-ADIW K Rd-2-bits)
   (define Rd (+ 24 (* Rd-2-bits 2)))
@@ -741,7 +740,6 @@
     (print-instruction-uniquely OUT 'LPMRdZ+)
     (fprintf OUT "LPM R~a,Z+ [~a]" Rd (num->hex z-val)))
   (set! clock-cycles 3))
-
 
 (define (avr-NEG Rd)
   (define Rd-val (get-register Rd))
@@ -1393,21 +1391,22 @@
 ;; map opcode to instruction procedure
 (define (decode opcode)
   (let loop ([tables-and-masks tables-and-masks])
-    ;; opcode unknown (probably data, or 32-bit instr)
-    (cond [(empty? tables-and-masks) #f]
-          [else
-           (define mapping (car tables-and-masks))
-           (define masks (get-masks mapping))
-           (define table (get-table mapping))
-           (define mask (bitwise-not (apply ior masks)))
-           (define an-opcode-info (lookup-opcode (get-table mapping)
-                                                 (& opcode mask)))
-           (define args (get-args opcode masks))
-           (if an-opcode-info
-               (apply opcode-info (append (cons opcode
-                                                an-opcode-info)
-                                          (list args)))
-               (loop (cdr tables-and-masks)))])))
+    (cond
+      ;; unknown opcode (probably data, or 32-bit instr)
+      [(empty? tables-and-masks) #f]
+      [else
+       (define mapping (car tables-and-masks))
+       (define masks (get-masks mapping))
+       (define table (get-table mapping))
+       (define mask (bitwise-not (apply ior masks)))
+       (define an-opcode-info (lookup-opcode (get-table mapping)
+                                             (& opcode mask)))
+       (define args (get-args opcode masks))
+       (if an-opcode-info
+           (apply opcode-info (append (cons opcode
+                                            an-opcode-info)
+                                      (list args)))
+           (loop (cdr tables-and-masks)))])))
 
 ;; convert the flash into prepared procedures
 ;; make sure to get args of 32-bit opcodes
@@ -1426,7 +1425,7 @@
                 [32-bit? (opcode-info-32-bit? an-opcode-info)]
                 [args    (opcode-info-args an-opcode-info)])
             ;; 32-bit opcodes need to lookup the next word
-            (when (opcode-info-32-bit? an-opcode-info)
+            (when 32-bit?
               (let ([next-word (flash-get-word (+ addr 1))])
                 (set! was-32-bit? #t)
                 (set! opcode (+ (<< opcode 16) next-word))
@@ -1445,6 +1444,11 @@
 (define (flash->procedures!)
   (set! PROCEDURES (flash->procedures FLASH)))
 
+(define (update-pc-and-ccs! instr-name
+                            #:addr (addr #f)
+                            #:cond-jump? (cond-jump #f))
+  (error 'update-pc-and-ccs! "Not implemented yet\n"))
+
 (define (run (n 1))
   (for ([i n])
     (define saved-pc PC)
@@ -1454,14 +1458,14 @@
     (set! clock-cycles 0)
     (when instr
       (define 32-bit? (opcode-info-32-bit? instr))
-      (define args    (opcode-info-args instr))
-      (define proc    (opcode-info-proc instr))
-      (define opcode  (opcode-info-opcode instr))
+      (define args (opcode-info-args instr))
+      (define procedure (opcode-info-proc instr))
+      (define opcode (opcode-info-opcode instr))
       (when debug?   
         (fprintf OUT "~a|~a|~a|"
                  CURRENT-CLOCK-CYCLE (* (- PC 1) 2)
                  (num->hex opcode)))
-      (apply proc args)
+      (apply procedure args)
       (when debug?
         (when (and symbol symbol-need-to-print?)
           (fprintf OUT " ;; ~a" symbol))
