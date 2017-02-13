@@ -93,6 +93,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; symbol table reader: avr-objdump -C -t main.elf
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TODO: keep the symbol type and look it up later on
+(define (symbol-text? symbol) #t)
 (define ADDRESS-TABLE (hash))
 (define SYMBOL-TABLE (hash))
 (define (load-symbol-table a-file)

@@ -1467,7 +1467,8 @@
                  (num->hex opcode)))
       (apply procedure args)
       (when debug?
-        (when (and symbol symbol-need-to-print?)
+        (when (and symbol symbol-need-to-print?
+                   (symbol-text? symbol))
           (fprintf OUT " ;; ~a" symbol))
         (fprintf OUT "~n"))
       (when save-intermediate-values?
