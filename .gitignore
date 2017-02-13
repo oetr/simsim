@@ -1,7 +1,9 @@
 *
 !LICENSE
 !.gitignore
-!tests/
+!tests/*/
+!examples/
+!examples/*/
 !*.org
 !*.rkt
 !*.S

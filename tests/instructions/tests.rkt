@@ -1,7 +1,8 @@
 (require racket racket/main rackunit racket/system)
 
-;; compile the code before simulating it
-(system "make clean && make")
+;; compile the code
+(require (file "../utilities.rkt"))
+(make)
 
 (require "data.rkt")
 

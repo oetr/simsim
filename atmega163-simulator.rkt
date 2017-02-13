@@ -109,6 +109,8 @@
       (define symbol (list-ref a-match 4))
       (define addr (hex->num (list-ref a-match 1)))
       (when (string=? type ".text")
+        (unless (even? addr)
+          (error 'load-symbol-table "Uneven address (fix this procedure!) ~a~n" addr))
         (set! addr (/ addr 2)))
       ;; addresses of static variables in the .bss section
       ;; are shifted, shift them back here
@@ -140,22 +142,23 @@
                          (hash-ref SYMBOL-TABLE x #f)) syms))
           <))
   (define r #f)
-  (if (zero? count)
-      ;;(car results)
-      (set! r (car results))
-      (if closest-to
-          (let loop ([results results]
-                     [prev #f])
-            (if (empty? results)
-                (set! r prev)
-                (if (<= closest-to (car results))
-                    (if (and prev
-                             (>= (- closest-to prev)
-                                 (- (car results) closest-to)))
-                        (set! r prev)
-                        (set! r (car results)))
-                    (loop (cdr results) (car results)))))
-          (set! r (car results))))
+  (cond [(empty? results) #f]
+        [(zero? count)
+         (set! r (car results))]
+        [closest-to
+         (let loop ([results results]
+                    [prev #f])
+           (if (empty? results)
+               (set! r prev)
+               (if (<= closest-to (car results))
+                   (if (and prev
+                            (>= (- closest-to prev)
+                                (- (car results) closest-to)))
+                       (set! r prev)
+                       (set! r (car results)))
+                   (loop (cdr results) (car results)))))]
+        [else
+         (set! r (car results))])
   r)
 
 (define (print-symbols)
@@ -212,6 +215,16 @@
                                                  *flash-data*))
           (set! *flash-data* a-byte))
         a-byte)))
+(define (flash-set-byte addr val)
+  (define word (flash-get-word (arithmetic-shift addr -1)))
+  (define new-word
+    (if (bitwise-bit-set? addr 0)
+        (bitwise-ior (bitwise-and word #x00ff)
+                     (arithmetic-shift val 8))
+        (bitwise-ior (bitwise-and word #xff00)
+                     val)))
+  (vector-set! FLASH (arithmetic-shift addr -1) new-word))
+  
 
 (define (print-flash)
   (define (dots-when-zero num)
