@@ -3,11 +3,8 @@
 
 (require (file "../../tests/utilities.rkt"))
 
-(make)
-
-(define iv #"00000000000000000000000000000000")
-
 ;; compile the code before simulating it
+(make)
 
 ;; TODO: use load for now, change later to "require"
 (load "../../atmega163-simulator.rkt")
@@ -23,6 +20,7 @@
 ;; crypto library
 (define key (list->bytes (build-list 16 (lambda _ (random 256)))))
 (define pt  (list->bytes (build-list 16 (lambda _ (random 256)))))
+(define iv #"00000000000000000000000000000000")
 (define correct-ct
   (subbytes (encrypt cipher:aes-128-ecb key iv pt) 0 16))
 ;; set key and plaintexts in the flash
