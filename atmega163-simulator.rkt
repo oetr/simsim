@@ -124,8 +124,12 @@
   (set! ADDRESS-TABLE (make-hash addrs))
   (set! SYMBOL-TABLE (make-hash syms)))
 
-(define (lookup-address addr)
-  (hash-ref ADDRESS-TABLE addr #f))
+(define (lookup-address addr #:all? (all? #f))
+  (define address (hash-ref ADDRESS-TABLE addr #f))
+  (if (and address (not all?))
+      (car address)
+      address))
+      
 
 (define (lookup-symbol a-symbol (approximate-matching? #f)
                        (closest-to #f) #:all? (all? #f))
@@ -164,9 +168,9 @@
                    (loop (cdr results) (car results)))))]
         [else
          (set! r (car results))])
-  (if all?
-      r
-      (car r)))
+  (cond [all? r]
+        [r (car r)]
+        [else r]))
 
 (define (print-symbols)
   (define mapping (sort (hash->list SYMBOL-TABLE)

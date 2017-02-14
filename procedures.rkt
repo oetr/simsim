@@ -1452,7 +1452,7 @@
 (define (run (n 1))
   (for ([i n])
     (define saved-pc PC)
-    (define symbol (lookup-address PC))
+    (define symbol (lookup-address PC #:all? #t))
     (define instr (vector-ref PROCEDURES PC))
     (inc-pc)
     (set! clock-cycles 0)
