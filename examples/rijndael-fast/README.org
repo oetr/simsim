@@ -3,6 +3,6 @@ This is an example of how to use the simulator to obtain an execution trace and 
 Simulation is done in Racket, data analysis in Octave.
 
 The Octave file shows how to load the data.
-[[./leakage.svg]]
+[[./leakage.png]]
 
 

@@ -18,7 +18,7 @@ plot(cc,leakage)
 ylabel("leakage")
 xlabel("clock cycle")
 xlim([0 cc(end)])
-print("leakage.svg")
+print("leakage.png")
 
 ## Get the data from the execution trace
 traceFile = "execution-trace.txt";
@@ -34,4 +34,4 @@ plot(instrCC,instrIDs)
 ylabel("instruction ID")
 xlabel("clock cycle")
 xlim([0 instrCC(end)])
-print("instr-id.svg")
+print("instr-id.png")
