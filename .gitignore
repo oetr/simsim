@@ -1,10 +1,23 @@
 *
+# Reposotory
 !LICENSE
 !.gitignore
+!*.org
+
+## Directories
 !tests/*/
 !examples/
-!examples/*/
-!*.org
+!examples/*/*
+
+## Simulator
 !*.rkt
+
+## Examples
 !*.S
 !Makefile
+
+## Octave
+*.m
+
+## Images
+*.svg

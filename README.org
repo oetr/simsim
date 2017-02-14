@@ -1,18 +1,19 @@
-* Objectives 
+* Objectives
 - Simulate code execution of the ATMega163 microcontroller
 - Print execution trace
 - Print processed data for leakage analysis
+- Produce a simulated side-channel trace based on Hamming weight and Hamming distance models.
 
 * Prerequisites
 - Download Racket from https://racket-lang.org
-- You need a hex-file compiled for an atmega163
-- You need an elf-file compiled for an atmega163 to get the symbol table, for better visualization
 
-* Running the tests
+* Running examples
+
 #+BEGIN_SRC shell
-$ cd tests/
-$ racket -f all-tests.rkt
+$ cd examples/rijndael-fast
+$ racket -f rijndael-fast.rkt
 #+END_SRC
 
+
 * Support status
-- ATMega163: small subset of instructions can be simulated
+- ATMega163: most instructions

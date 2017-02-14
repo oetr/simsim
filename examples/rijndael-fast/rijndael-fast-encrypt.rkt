@@ -11,7 +11,13 @@
 (load "../../instruction-table.rkt")
 (load "../../procedures.rkt")
 
-(reset-machine)
+
+;; save the execution trace
+(define execution-trace-name "execution-trace.txt")
+(define leakage-trace-name "leakage-trace.txt")
+
+(reset-machine execution-trace-name)
+
 (load-symbol-table "main.sim")
 (hex->flash! "main.hex")
 (flash->procedures!)
@@ -34,8 +40,15 @@
   (flash-set-byte (+ key-address i) k))
 
 ;; encrypt and compare to the correct result
-(set! debug? #f) ;; turn it on to see the trace
+(set! debug? #t) ;; record execution trace
+(set! save-intermediate-values? #t) ;; record leakage
+(set! save-hamming-distance? #t) ;; only Hamming weight otherwise
 (go-address (lookup-symbol "encrypted"))
+(set! debug? #f)
+;; TODO: hide more from the user to reduce this 
+;; flush output buffer if it's a file, so that the whole
+;; execution trace is saved
+(close-if-file OUT)
 
 ;; check whether the simulator computes correct ciphertext
 ;; ciphertext is in the registers r0-r15
@@ -47,3 +60,11 @@
                   ", got: " (num->hexb computed-ct-byte)))
   (check-equal? computed-ct-byte correct-ct-byte msg))
 
+;; save the leakage
+(define leakage-file
+  (open-output-file leakage-trace-name #:exists 'replace))
+;; save the number of recorded leakage clock cycles
+(write-header leakage-file INTERMEDIATE-VALUES-INDEX)
+;; save the data
+(write-intermediate-values-bytes leakage-file)
+(close-output-port leakage-file)

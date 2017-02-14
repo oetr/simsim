@@ -135,7 +135,8 @@
   (write-bytes *saved-value-pc* a-file 0
                (* INTERMEDIATE-VALUES-INDEX INT-BYTES))
   (write-bytes *saved-value-cc* a-file 0
-               (* INTERMEDIATE-VALUES-INDEX INT-BYTES)))
+               (* INTERMEDIATE-VALUES-INDEX INT-BYTES))
+  (void))
 
 (define (intermediate-value-bytes->file a-file
                                         #:exists (exists 'append))
