@@ -7,7 +7,7 @@
 ## Directories
 !tests/*/
 !examples/
-!examples/*/*
+!examples/*/
 
 ## Simulator
 !*.rkt
@@ -17,7 +17,7 @@
 !Makefile
 
 ## Octave
-*.m
+!*.m
 
 ## Images
-*.svg
+!*.svg
