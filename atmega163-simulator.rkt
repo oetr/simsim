@@ -94,7 +94,8 @@
 ;; symbol table reader: avr-objdump -C -t main.elf
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TODO: keep the symbol type and look it up later on
-(define (symbol-text? symbol) #t)
+(define (symbol-text? symbol)
+  (string=? (cadr symbol) ".text"))
 (define ADDRESS-TABLE (hash))
 (define SYMBOL-TABLE (hash))
 (define (load-symbol-table a-file)
@@ -118,8 +119,8 @@
       ;; are shifted, shift them back here
       (when (or (string=? type ".bss") (string=? type ".data"))
         (set! addr (- addr #x800000)))
-      (set! addrs (cons (cons addr   symbol) addrs))
-      (set! syms  (cons (cons symbol addr)   syms))))
+      (set! addrs (cons (list addr   symbol type gl) addrs))
+      (set! syms  (cons (list symbol addr type gl)   syms))))
   (set! ADDRESS-TABLE (make-hash addrs))
   (set! SYMBOL-TABLE (make-hash syms)))
 
@@ -127,7 +128,7 @@
   (hash-ref ADDRESS-TABLE addr #f))
 
 (define (lookup-symbol a-symbol (approximate-matching? #f)
-                       (closest-to #f))
+                       (closest-to #f) #:all? (all? #f))
   (define syms (list a-symbol))
   ;; go through all extracted symbols and match approximate name
   (define count 0)
@@ -142,7 +143,9 @@
     (sort (filter identity
                   (map (lambda (x)
                          (hash-ref SYMBOL-TABLE x #f)) syms))
-          <))
+          (lambda (sym0 sym1)
+            (< (car sym0)
+               (car sym1)))))
   (define r #f)
   (cond [(empty? results) #f]
         [(zero? count)
@@ -152,28 +155,32 @@
                     [prev #f])
            (if (empty? results)
                (set! r prev)
-               (if (<= closest-to (car results))
+               (if (<= closest-to (caar results))
                    (if (and prev
                             (>= (- closest-to prev)
-                                (- (car results) closest-to)))
+                                (- (caar results) closest-to)))
                        (set! r prev)
                        (set! r (car results)))
                    (loop (cdr results) (car results)))))]
         [else
          (set! r (car results))])
-  r)
+  (if all?
+      r
+      (car r)))
 
 (define (print-symbols)
   (define mapping (sort (hash->list SYMBOL-TABLE)
                         (lambda (a b) (string<? (car a) (car b)))))
   (for([element mapping])
-    (printf "~a: ~a~n" (car element) (num->hex (cdr element)))))
+    (printf "~a: ~a, ~a, ~a~n" (car element) (num->hex (cadr element)) (caddr element) (cadddr element))))
+
 (define (print-addrs)
   (define mapping (sort (hash->list ADDRESS-TABLE)
                         (lambda (a b)
                           (< (car a) (car b)))))
   (for([element mapping])
-    (printf "~a: ~a~n" (num->hex (car element))  (cdr element))))
+    (printf "~a: ~a, ~a, ~a~n" (num->hex (car element))  (cadr element)
+            (caddr element) (cadddr element))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 1) Atmega163L Specs:

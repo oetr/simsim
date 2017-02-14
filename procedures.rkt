@@ -1469,7 +1469,7 @@
       (when debug?
         (when (and symbol symbol-need-to-print?
                    (symbol-text? symbol))
-          (fprintf OUT " ;; ~a" symbol))
+          (fprintf OUT " ;; ~a" (car symbol)))
         (fprintf OUT "~n"))
       (when save-intermediate-values?
         (save-values! saved-pc CURRENT-CLOCK-CYCLE
