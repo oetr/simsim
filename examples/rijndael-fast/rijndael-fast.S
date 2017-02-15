@@ -1,4 +1,5 @@
 ; Copyright (C) 2003,2006 B. Poettering
+; Adapted to avr-gcc and simsim by Peter Samarin
 ; 
 ; This program is free software; you can redistribute and/or modify
 ; it under the terms of the GNU General Public License as published by
