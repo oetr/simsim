@@ -1,8 +1,10 @@
-This is an example of how to use the simulator to obtain an execution trace and leakage traces of the RijndaelFast implementation available from http://point-at-infinity.org/avraes/rijndaelfast.asm.html.
+This is an example of how to use the simulator to obtain one execution trace and leakage traces of the RijndaelFast implementation available from http://point-at-infinity.org/avraes/rijndaelfast.asm.html.
 
-Simulation is done in Racket, data analysis in Octave.
-
-The Octave file shows how to load the data.
+Here is how a leakage trace looks like:
 [[./leakage.png]]
 
+The simulator runs 1000 simulations with a fixed key and random plaintext.
+After obtaining the traces, I run a CPA in Octave.
+Here are the absolute correlation coefficients for each key:
+[[./CPA-each-keybyte.png]]
 

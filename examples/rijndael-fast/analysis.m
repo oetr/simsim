@@ -32,14 +32,10 @@ leakage = leakage + rand(size(leakage))+0.0001;
 #############################################
 ## Simple CPA
 #############################################
-## load sbox and hamming weights tables
-source("sbox-and-hws.m")
-## allocate
+source("sbox-and-hws.m") ## load sbox and hamming weights tables
 guessed_key = zeros(1,16,"uint8");
 corrs = zeros(16,nVals);
-## perform CPA for each key byte
 for key_byte = 1:16
-  ## make a guess for a key byte, repeat for each trace
   guess = repmat(0:255, nTraces,1);
   pt_repeated = repmat(plaintexts(:,key_byte), 1, 256);
   hypotheses = hw(sbox(bitxor(guess,pt_repeated)+1)+1);
@@ -49,7 +45,6 @@ for key_byte = 1:16
 end
 
 printf("%d key bytes correct\n", sum(guessed_key == keys(1,:)));
-
 
 ## Make nice plots
 set(0, 'DefaulttextInterpreter', 'none')
@@ -68,11 +63,11 @@ xlim([0 nVals])
 title("CPA on each key byte")
 print("CPA-each-keybyte.png")
 
-plot(cc(1,:),leakage(1,:))
-## plot(cc(1,:),mean(leakage))
-ylabel("mean leakage")
+plot(cc(1,:),mean(leakage))
+ylabel("leakage")
 xlabel("clock cycle")
 xlim([0 cc(end)])
+title("Mean leakage of 1000 traces")
 print("leakage.png")
 
 ## Get the data from the execution trace
