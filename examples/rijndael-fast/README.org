@@ -1,6 +1,6 @@
 This is an example of how to use the simulator to obtain one execution trace and leakage traces of the RijndaelFast implementation available from http://point-at-infinity.org/avraes/rijndaelfast.asm.html.
 
-Here is how a leakage trace looks like:
+Here is how a mean leakage trace of 1000 traces looks like:
 [[./leakage.png]]
 
 The simulator runs 1000 simulations with a fixed key and random plaintext.

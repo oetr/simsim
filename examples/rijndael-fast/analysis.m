@@ -49,7 +49,7 @@ printf("%d key bytes correct\n", sum(guessed_key == keys(1,:)));
 ## Make nice plots
 set(0, 'DefaulttextInterpreter', 'none')
 figure(1)
-papersize = [30,21]*0.5;
+papersize = [30,21]*0.4;
 set (gcf, "paperorientation", "landscape") 
 set (gcf, "papersize", papersize)
 set (gcf, "paperposition", [0 0, papersize])
