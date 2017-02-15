@@ -126,8 +126,15 @@
   (write-intermediate-values a-file #:exists exists #:mode 'binary)
   (close-output-port a-file))
 
-(define (write-header a-file . args)
-  (for ([num args]) (write-bytes (uint->bytes num 4) a-file)))
+(define (write-header a-file #:width (width 4) . args)
+  (for ([arg args])
+    (cond [(bytes? arg)
+           (write-bytes arg a-file)]
+          [(list? arg)
+           (for ([num arg])
+             (write-bytes (uint->bytes num width) a-file))]
+          [else
+           (write-bytes (uint->bytes arg width) a-file)])))
 
 (define (write-intermediate-values-bytes a-file)
   (write-bytes *saved-value-data* a-file 0

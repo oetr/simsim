@@ -8,13 +8,35 @@ set (gcf, "paperposition", [0 0, papersize])
 
 ## Get data from the leakage file
 f       = fopen("leakage-trace.txt");
-nVals   = fread(f, 1, "*uint32","b"); ## "b" - big endian
-leakage = fread(f,nVals,"*double", "n"); ## "n" - native
-pc      = fread(f,nVals,"*uint16", "b");
-cc      = fread(f,nVals,"*uint16", "b");
+nTraces = fread(f, 1, "*uint32","b"); ## "b" - big endian
+keys = zeros(nTraces,16,"uint8");
+plaintexts = zeros(nTraces,16,"uint8");
+ciphertexts = zeros(nTraces,16,"uint8");
+leakage = cell(nTraces,1);
+pc = cell(nTraces,1);
+cc = cell(nTraces,1);
+for i = 1:nTraces
+  keys(i,:) = fread(f,16,"*uint8");
+  plaintexts(i,:) = fread(f,16,"*uint8");
+  ciphertexts(i,:) = fread(f,16,"*uint8");
+  nVals   = fread(f, 1, "*uint32","b"); ## "b" - big endian
+  leakage{i} = fread(f,nVals,"*double", "n")'; ## "n" - native
+  pc{i}      = fread(f,nVals,"*uint16", "b")';
+  cc{i}      = fread(f,nVals,"*uint16", "b")';
+end
 fclose(f);
+## Conversion from cell to matrix only works if there are no timing
+## differences between the execution runs
+leakage = cell2mat(leakage);
+pc = cell2mat(pc);
+cc = cell2mat(cc);
 
-plot(cc,leakage)
+## Add extra noise, because some instructions have constant leakage,
+## which will result in zero variance
+leakage = leakage + rand(size(leakage))+0.001;
+
+plot(cc(1,:),leakage(1,:))
+## plot(cc(1,:),mean(leakage))
 ylabel("leakage")
 xlabel("clock cycle")
 xlim([0 cc(end)])
@@ -35,3 +57,30 @@ ylabel("instruction ID")
 xlabel("clock cycle")
 xlim([0 instrCC(end)])
 print("instr-id.png")
+
+## Simple CPA
+## load sbox and hamming weights tables
+source("sbox-and-hws.m")
+## allocate
+guessed_key = zeros(1,16,"uint8");
+corrs = zeros(16,nVals);
+## perform CPA for each key byte
+for key_byte = 1:16
+  ## make a guess for a key byte, repeat for each trace
+  guess = repmat(0:255, nTraces,1);
+  pt_repeated = repmat(plaintexts(:,key_byte), 1, 256);
+  hypotheses = hw(sbox(bitxor(guess,pt_repeated)+1)+1);
+  c = abs(corr(hypotheses,leakage));
+  guessed_key(key_byte) = find(max(c') == max(max(c)))-1;
+  corrs(key_byte,:) = c(guessed_key(key_byte)+1,:);
+end
+
+printf("%d key bytes correct\n", sum(guessed_key == keys(1,:)));
+
+
+
+plot(corrs'+repmat(0:15,nVals,1))
+xlabel("clock cycle")
+ylabel("correlation for each key byte")
+ylim([0 16])
+xlim([0 nVals])
