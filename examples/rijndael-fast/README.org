@@ -4,7 +4,8 @@ Here is how a mean leakage trace of 1000 traces looks like:
 [[./pics/leakage.png]]
 
 The simulator runs 1000 simulations with a fixed key and random plaintext.
-After obtaining the traces, I run a CPA in Octave.
+After obtaining the traces, I run a CPA on the first round using the Hamming-weight model.
+The attack is done using Octave.
 Here are the absolute correlation coefficients for each key:
 [[./pics/CPA-each-keybyte.png]]
 
