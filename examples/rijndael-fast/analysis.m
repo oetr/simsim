@@ -66,14 +66,17 @@ set (gca, 'ytick', 0:16)
 ylim([0 16])
 xlim([0 nVals])
 title("CPA on each key byte")
-print("CPA-each-keybyte.png")
+print("pics/CPA-each-keybyte.png")
+print("pics/CPA-each-keybyte.svg")
 
 plot(cc(1,:),mean(leakage))
 ylabel("leakage")
 xlabel("clock cycle")
 xlim([0 cc(end)])
 title("Mean leakage of 1000 traces")
-print("leakage.png")
+print("pics/leakage.png")
+print("pics/leakage.svg")
+
 
 #############################################################
 ## Get the data from the execution trace
@@ -94,7 +97,8 @@ plot(instrCC,instrIDs)
 ylabel("instruction ID")
 xlabel("clock cycle")
 xlim([0 instrCC(end)])
-print("instr-id.png")
+print("pics/instr-id.png")
+print("pics/instr-id.svg")
 
 #############################################################
 ## Let's combine the information from both files to figure out
@@ -146,5 +150,6 @@ xlabel("clock cycle")
 ylabel("correlations")
 ylim([0,yhigh])
 hold off;
-print("Instruction-causing-leakage.png")
+print("pics/Instruction-causing-leakage.png")
+print("pics/Instruction-causing-leakage.svg")
 

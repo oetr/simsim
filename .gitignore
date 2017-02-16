@@ -1,5 +1,5 @@
 *
-# Reposotory
+# Repository
 !LICENSE
 !.gitignore
 !*.org
@@ -8,6 +8,7 @@
 !tests/*/
 !examples/
 !examples/*/
+!examples/*/pics
 
 ## Simulator
 !*.rkt
