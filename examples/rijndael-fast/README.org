@@ -8,3 +8,8 @@ After obtaining the traces, I run a CPA in Octave.
 Here are the absolute correlation coefficients for each key:
 [[./CPA-each-keybyte.png]]
 
+
+Combining the annotations from the execution trace and results of CPA, we can find the instruction responsible for the most leakage.
+For the first byte of the state, after performing Sbox lookups with =LPM= instruction, the result is moved into two other registers using =MOV= instructions:
+[[./Instruction-causing-leakage.png]]
+
