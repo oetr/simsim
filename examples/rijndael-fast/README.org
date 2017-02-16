@@ -1,15 +1,15 @@
 This is an example of how to use the simulator to obtain one execution trace and leakage traces of the RijndaelFast implementation available from http://point-at-infinity.org/avraes/rijndaelfast.asm.html.
 
 Here is how a mean leakage trace of 1000 traces looks like:
-[[./leakage.png]]
+[[./pics/leakage.png]]
 
 The simulator runs 1000 simulations with a fixed key and random plaintext.
 After obtaining the traces, I run a CPA in Octave.
 Here are the absolute correlation coefficients for each key:
-[[./CPA-each-keybyte.png]]
+[[./pics/CPA-each-keybyte.png]]
 
 
 Combining the annotations from the execution trace and results of CPA, we can find the instruction responsible for the most leakage.
 For the first byte of the state, after performing Sbox lookups with =LPM= instruction, the result is moved into two other registers using =MOV= instructions:
-[[./Instruction-causing-leakage.png]]
+[[./pics/Instruction-causing-leakage.png]]
 
