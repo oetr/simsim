@@ -10,13 +10,13 @@ leakage = cell(nTraces,1);
 pc = cell(nTraces,1);
 cc = cell(nTraces,1);
 for i = 1:nTraces
-  keys(i,:) = fread(f,16,"*uint8");
-  plaintexts(i,:) = fread(f,16,"*uint8");
+  keys(i,:)        = fread(f,16,"*uint8");
+  plaintexts(i,:)  = fread(f,16,"*uint8");
   ciphertexts(i,:) = fread(f,16,"*uint8");
-  nVals   = fread(f, 1, "*uint32","b"); ## "b" - big endian
-  leakage{i} = fread(f,nVals,"*double", "n")'; ## "n" - native
-  pc{i}      = fread(f,nVals,"*uint16", "b")';
-  cc{i}      = fread(f,nVals,"*uint16", "b")';
+  nVals            = fread(f, 1, "*uint32","b"); ## "b" - big endian
+  leakage{i}       = fread(f,nVals,"*double", "n")'; ## "n" - native
+  pc{i}            = fread(f,nVals,"*uint16", "b")';
+  cc{i}            = fread(f,nVals,"*uint16", "b")';
 end
 fclose(f);
 ## Conversion from cell to matrix only works if there are no timing
@@ -30,7 +30,7 @@ cc = cell2mat(cc);
 leakage = leakage + rand(size(leakage))+0.0001;
 
 #############################################################
-## Simple CPA
+## Simple CPA using the Hamming-weight model on all key bytes
 #############################################################
 source("sbox-and-hws.m") ## load sbox and hamming weights tables
 guessed_key = zeros(1,16,"uint8");
@@ -105,7 +105,6 @@ print("pics/instr-id.svg")
 ## which instructions are responsible for the success of CPA
 #############################################################
 ## find out the region where CPA is successful (first round)
-#region = find(sum(corrs>(mean(corrs') + std(corrs')*4)'));
 region = find(corrs(1,:)>(mean(corrs(1,:)) + std(corrs(1,:))*4));
 region = region(1)-5:region(end)+5;
 maxCorrCC = region(find(corrs(1,region)==max(corrs(1,region))))-1;
@@ -147,7 +146,7 @@ endfor;
 set (gca, 'ytick', 0:0.1:1)
 title("Instruction causing most HW leakage")
 xlabel("clock cycle")
-ylabel("correlations")
+ylabel("correlation")
 ylim([0,yhigh])
 hold off;
 print("pics/Instruction-causing-leakage.png")
