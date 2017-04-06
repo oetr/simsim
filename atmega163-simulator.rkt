@@ -321,14 +321,13 @@
     (save-intermediate-values (bitwise-xor reg-prev-val val)))
   (vector-set! SRAM reg val)
   ;;(save-intermediate-values reg)
-  (save-intermediate-values val)
-  )
+  (save-intermediate-values val))
 
 ;; set two consecutive registers to a word
 (define (set-register-w reg val)
   (set-register reg (& val #xff)) ;; low value
-  (set-register (+ reg 1) (<< val -8)) ;; high value
-  )
+  (set-register (+ reg 1) (<< val -8))) ;; high value
+
 ;; concatenate two registers
 (define (get-registers . regs)
   (define result 0)
