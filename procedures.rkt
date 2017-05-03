@@ -1359,6 +1359,8 @@
 (define mask-A-5      #x00F8) ;; 5 bit register id (R00 - R31)
 (define mask-A-6      #x060F) ;; 6 bit IO port id
 
+;; connect opcode tables and the masks using following format
+;; opcode table | mask0 mask1 ...
 (define tables-and-masks
   (list
    (list opcodes-no-operands 0)
@@ -1384,7 +1386,7 @@
   (car tables-and-masks-entry))
 
 (define (get-args opcode masks)
-  (map (lambda (mask) (get-arg opcode mask)) masks))
+  (for/list ([mask masks]) (get-arg opcode mask)))
 
 ;; map opcode to instruction procedure
 (define (decode opcode)
