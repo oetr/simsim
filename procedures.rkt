@@ -153,41 +153,6 @@
   (print-bytes a-file)
   (close-output-port a-file))
 
-;; 2 bit register id (R24 R26 R28 R30)
-(define mask-Rd-2 #x0030)
-;; 3 bit register id (R16 - R23)
-(define mask-Rd-3 #x0070)
-;; 4 bit register id (R16 - R31)
-(define mask-Rd-4 #x00f0)
-;; 5 bit register id (R00 - R31)
-(define mask-Rd-5 #x01f0)
-;; 3 bit register id (R16 - R23)
-(define mask-Rr-3 #x0007)
-;; 4 bit register id (R16 - R31)
-(define mask-Rr-4 #x000f)
-;; 5 bit register id (R00 - R31)
-(define mask-Rr-5 #x020f)
-;; for 8 bit constant
-(define mask-K-8 #x0F0F)
-;; for 6 bit constant
-(define mask-K-6 #x00CF)
-;; for 7 bit relative address
-(define mask-k-7 #x03F8)
-;; for 12 bit relative address
-(define mask-k-12 #x0FFF)
-;; for 22 bit absolute address
-(define mask-k-22 #x01F1)
-;; register bit select
-(define mask-reg-bit #x0007)
-;; status register bit select
-(define mask-sreg-bit #x0070)
-;; address displacement (q)
-(define mask-q-displ #x2C07)
-;; 5 bit register id (R00 - R31)
-(define mask-A-5 #x00F8)
-;; 6 bit IO port id
-(define mask-A-6 #x060F)
-
 (struct opcode-info (opcode name proc cycles 32-bit? args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1372,6 +1337,27 @@
         (set! result (ior result (<< 1 target-i))))
       (set! target-i (+ target-i 1))))
   result)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Masks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define mask-Rd-2     #x0030) ;; 2 bit register id (R24 R26 R28 R30)
+(define mask-Rd-3     #x0070) ;; 3 bit register id (R16 - R23)
+(define mask-Rd-4     #x00f0) ;; 4 bit register id (R16 - R31)
+(define mask-Rd-5     #x01f0) ;; 5 bit register id (R00 - R31)
+(define mask-Rr-3     #x0007) ;; 3 bit register id (R16 - R23)
+(define mask-Rr-4     #x000f) ;; 4 bit register id (R16 - R31)
+(define mask-Rr-5     #x020f) ;; 5 bit register id (R00 - R31)
+(define mask-K-8      #x0F0F) ;; 8 bit constant
+(define mask-K-6      #x00CF) ;; 6 bit constant
+(define mask-k-7      #x03F8) ;; 7 bit relative address
+(define mask-k-12     #x0FFF) ;; 12 bit relative address
+(define mask-k-22     #x01F1) ;; 22 bit absolute address
+(define mask-reg-bit  #x0007) ;; register bit select
+(define mask-sreg-bit #x0070) ;; status register bit select
+(define mask-q-displ  #x2C07) ;; address displacement (q)
+(define mask-A-5      #x00F8) ;; 5 bit register id (R00 - R31)
+(define mask-A-6      #x060F) ;; 6 bit IO port id
 
 (define tables-and-masks
   (list
