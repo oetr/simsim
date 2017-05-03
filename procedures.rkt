@@ -1361,7 +1361,7 @@
 
 ;; connect opcode tables and the masks using following format
 ;; opcode table | mask0 mask1 ...
-(define tables-and-masks
+(define *tables-and-masks*
   (list
    (list opcodes-no-operands 0)
    (list opcodes-5-bit-Rd-Rr mask-Rd-5 mask-Rr-5)
@@ -1390,55 +1390,52 @@
 
 ;; map opcode to instruction procedure
 (define (decode opcode)
-  (let loop ([tables-and-masks tables-and-masks])
+  (let loop ([tables *tables-and-masks*])
     (cond
-      ;; unknown opcode (probably data, or 32-bit instr)
-      [(empty? tables-and-masks) #f]
+      [(empty? tables) #f] ;; no opcode (data, or was 32-bit instr)
       [else
-       (define mapping (car tables-and-masks))
-       (define masks (get-masks mapping))
-       (define table (get-table mapping))
+       (define table-and-masks (car tables))
+       (define masks (get-masks table-and-masks))
        (define mask (bitwise-not (apply ior masks)))
-       (define an-opcode-info (lookup-opcode (get-table mapping)
+       (define an-opcode-info (lookup-opcode (get-table table-and-masks)
                                              (& opcode mask)))
        (define args (get-args opcode masks))
        (if an-opcode-info
            (apply opcode-info (append (cons opcode
                                             an-opcode-info)
                                       (list args)))
-           (loop (cdr tables-and-masks)))])))
+           (loop (cdr tables)))])))
 
 ;; convert the flash into prepared procedures
 ;; make sure to get args of 32-bit opcodes
 (define (flash->procedures flash)
   ;; vector of procedures with same size
   (define procedures (make-vector FLASHEND #f))
-  (define was-32-bit? #f) ;; will ignore the word when "yes"
+  (define 32-bit? #f)
   (let loop ([addr 0])
     (unless (>= addr FLASHEND)
       (define an-opcode-info (decode (flash-get-word addr)))
-      (if (and (not was-32-bit?) an-opcode-info)
-          (let ([opcode  (opcode-info-opcode an-opcode-info)]
-                [name    (opcode-info-name an-opcode-info)]
-                [proc    (opcode-info-proc an-opcode-info)]
-                [cycles  (opcode-info-cycles an-opcode-info)]
-                [32-bit? (opcode-info-32-bit? an-opcode-info)]
-                [args    (opcode-info-args an-opcode-info)])
-            ;; 32-bit opcodes need to lookup the next word
-            (when 32-bit?
-              (let ([next-word (flash-get-word (+ addr 1))])
-                (set! was-32-bit? #t)
-                (set! opcode (+ (<< opcode 16) next-word))
-                (define proc-args
-                  (apply proc (append args (list next-word))))
-                (set! proc (car proc-args))
-                (set! args (cadr proc-args))))
-            ;; copy
-            (define result
-              (opcode-info opcode name proc cycles 32-bit? args))
-            (vector-set! procedures addr result))
-          (set! was-32-bit? #f))
-      (loop (+ addr 1))))
+      (when an-opcode-info
+        (define opcode  (opcode-info-opcode  an-opcode-info))
+        (define name    (opcode-info-name    an-opcode-info))
+        (define proc    (opcode-info-proc    an-opcode-info))
+        (define cycles  (opcode-info-cycles  an-opcode-info))
+        (set!   32-bit? (opcode-info-32-bit? an-opcode-info))
+        (define args    (opcode-info-args    an-opcode-info))
+        ;; 32-bit opcodes need to lookup the next word
+        (when 32-bit?
+          (let ([next-word (flash-get-word (+ addr 1))])
+            (set! opcode (+ (<< opcode 16) next-word))
+            (define proc-args
+              (apply proc (append args (list next-word))))
+            (set! proc (car proc-args))
+            (set! args (cadr proc-args))))
+        ;; copy
+        (define result (opcode-info opcode name proc cycles 32-bit? args))
+        (vector-set! procedures addr result))
+      (if 32-bit?
+          (loop (+ addr 2)) ;; skip next word
+          (loop (+ addr 1)))))
   procedures)
 
 (define (flash->procedures!)
