@@ -1462,6 +1462,8 @@
         (fprintf OUT "~a|~a|~a|"
                  CURRENT-CLOCK-CYCLE (* (- PC 1) 2)
                  (num->hex opcode)))
+      ;; TODO: get instruction duration from a table, don't
+      ;; update it from within each instruction
       (apply procedure args)
       (when debug?
         (when (and symbol symbol-need-to-print?
