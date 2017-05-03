@@ -1358,11 +1358,15 @@
 (define (lookup-opcode a-hash opcode)
   (hash-ref a-hash opcode #f))
 
-(define (get-arg opcode mask (bit-length 16))
-  (define mask-opcode (& opcode mask))
+;; get the bits from the opcode given a mask
+;; the bits might be spread out through the opcode
+;; and need to be packed together
+(define (get-arg opcode mask)
+  (define masked-opcode (& opcode mask))
   (define target-i 0)
   (define result 0)
-  (for ([i (min (integer-length mask-opcode))])
+  (for ([i (integer-length masked-opcode)])
+    ;; bit packing
     (when (bitwise-bit-set? mask i)
       (when (bitwise-bit-set? opcode i)
         (set! result (ior result (<< 1 target-i))))
