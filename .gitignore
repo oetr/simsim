@@ -5,7 +5,9 @@
 !*.org
 
 ## Directories
+!tests/
 !tests/*/
+!tests/*/*/
 !examples/
 !examples/*/
 !examples/*/pics
