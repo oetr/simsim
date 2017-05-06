@@ -28,8 +28,8 @@
        (STS (const 0 127) (reg 16 31)) ;; 16 bit
        (LDS (reg 0 31) (const 0 65535)) ;; 32 bit
        (LDS (reg 16 31) (const 0 127)) ;; 32 bit
-       (JMP (const 0 ,(- (expt 2 22) 1)))
-       (RJMP (const ,(- (* 2 (expt 2 11))) ,(* 2 (expt 2 11))))
+       (JMP (const 0 8388606 2))
+       (RJMP (const -2048 2047 2))
        
        )))
 

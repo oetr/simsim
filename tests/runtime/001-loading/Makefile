@@ -180,7 +180,8 @@ CPPFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 #             for use in COFF files, additional information about filenames
 #             and function names needs to be present in the assembler source
 #             files -- see avr-libc docs [FIXME: not yet described there]
-ASFLAGS = -Wa,-adhlns=$(<:%.S=$(OBJDIR)/%.lst),-g$(DEBUG)
+# ASFLAGS = -Wa,-adhlns=$(<:%.S=$(OBJDIR)/%.lst),-g$(DEBUG)
+ASFLAGS += -adhlns=$(<:%.S=$(OBJDIR)/%.lst),-g$(DEBUG) -mno-wrap
 
 
 #---------------- Library Options ----------------
@@ -242,6 +243,7 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Define programs and commands.
 SHELL = sh
 CC = avr-gcc
+AS = avr-as
 OBJCOPY = avr-objcopy
 OBJDUMP = avr-objdump
 SIZE = avr-size
@@ -406,7 +408,7 @@ $(OBJDIR)/%.o : %.cpp
 $(OBJDIR)/%.o : %.S
 	@echo
 	@echo $(MSG_ASSEMBLING) $<
-	$(CC) -c $(ALL_ASFLAGS) $< -o $@
+	$(AS) -c $(ALL_ASFLAGS) $< -o $@
 
 
 # Create preprocessed source for use in sending a bug report.

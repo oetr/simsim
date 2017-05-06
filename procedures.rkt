@@ -1457,7 +1457,7 @@
       (define args (opcode-info-args instr))
       (define procedure (opcode-info-proc instr))
       (define opcode (opcode-info-opcode instr))
-      (when debug?   
+      (when debug?
         (fprintf OUT "~a|~a|~a|"
                  CURRENT-CLOCK-CYCLE (* (- PC 1) 2)
                  (num->hex opcode)))

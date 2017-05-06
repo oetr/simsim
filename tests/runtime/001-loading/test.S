@@ -1,1 +1,1 @@
-JMP 0xfffffffe
+RJMP -2048
