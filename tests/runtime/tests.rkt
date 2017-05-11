@@ -1,6 +1,7 @@
 ;; Time benchmark
 (require racket racket/main rackunit racket/system)
 (require (file "../utilities.rkt")) ;; code compilation using "make"
+(require (file "./runtime-utilities.rkt"))
 (require (file "../test-generator/test-generator.rkt"))
 
 ;; TODO: use load for now, change later to "require"
@@ -20,12 +21,22 @@
   (hex->flash! hex-file)
   (flash->procedures!))
 
-(define (measure-time n)
+(define (measure-and-save-time n file-name)
+  (define cpu 0)
+  (define real 0)
+  (define gc 0)
+  
   (for ([i n])
     (define code (generate-random-code 3000))
     (display-lines-to-file code (~a test-dir "test.S")
                            #:exists 'truncate/replace)
     (make test-dir)
-    (load-hex test-dir)))
+    (define-values (_ cpu-i real-i gc-i)
+      (time-apply load-hex (list test-dir)))
+    (set! cpu  (+ cpu  cpu-i))
+    (set! real (+ real real-i))
+    (set! gc   (+ gc   gc-i)))
+  ;; append the time to the file
+  (append-data-to-file n cpu real gc file-name))
 
-(measure-and-save-time measure-time (list 100) "./runtimes.org")
+(measure-and-save-time 100 "./runtimes.org")

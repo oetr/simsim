@@ -1,8 +1,7 @@
 (module test-generator racket/main
   (require racket racket/main rackunit racket/system)
-  (provide (all-defined-out))
-  ;;  (provide (except-out (all-defined-out)
-  ;;                       *instructions-grammar*))
+  (provide (except-out (all-defined-out)
+                       *instructions-grammar*))
 
   ;; instruction arguments and their range
   (define *instructions-grammar*
@@ -28,11 +27,65 @@
        (STS (const 0 127) (reg 16 31)) ;; 16 bit
        (LDS (reg 0 31) (const 0 65535)) ;; 32 bit
        (LDS (reg 16 31) (const 0 127)) ;; 32 bit
+       (EOR (reg 0 31) (reg 0 31))
+       (INC (reg 0 31))
+       (DEC (reg 0 31))
+       (CPSE (reg 0 31) (reg 0 31))
+       (OUT (const 0 63) (reg 0 31))
+       (IN (reg 0 31) (const 0 63))
+       (PUSH (reg 0 31))
+       (POP (reg 0 31))
+       (CPI (reg 16 31) (const 0 255))
+       (CP (reg 0 31) (reg 0 31))
+       (CPC (reg 0 31) (reg 0 31))
+       (SUB (reg 0 31) (reg 0 31))
+       (SUBI (reg 16 31) (const 0 255))
+       (BLD (reg 0 31) (const 0 7))
+       (ADIW (reg 24 31 2) (const 0 63))
+       (SBIW (reg 24 31 2) (const 0 63))
+       (CBI (const 0 31) (const 0 7))
+       (SBI (const 0 31) (const 0 7))
+       (SBIC (const 0 31) (const 0 7))
+       (SBIS (const 0 31) (const 0 7))
+       (SBCI (reg 16 31) (const 0 255))
+       (SBRC (reg 0 31) (const 0 7))
+       (SBRS (reg 0 31) (const 0 7))
+       (ADD (reg 0 31) (reg 0 31))
+       (ADC (reg 0 31) (reg 0 31))
+       (AND (reg 0 31) (reg 0 31))
+       (ROR (reg 0 31))
+       (LSR (reg 0 31))
+       (BST (reg 0 31) (const 0 7))
+       (CLI)
+       (CLC)
+       (BCLR (const 0 7))
+       (CLT)
+       (SEC)
+       (BSET (const 0 7))
+       (SET)
+       (SBC (reg 0 31) (reg 0 31))
+       (NOP)
+       (SWAP (reg 0 31))
+       (MUL (reg 0 31) (reg 0 31))
+       (OR (reg 0 31) (reg 0 31))
+       (ANDI (reg 16 31) (const 0 255))
+       (NEG (reg 0 31))
        )))
+
+  ;; Handle jumps separately
   ;; (JMP (const 0 8388606 2))
   ;; (RJMP (const -2048 2047 2))
-  
-  ;; )))
+  ;; (RCALL (const ))
+  ;; (CALL (const))
+  ;; (RET)
+  ;; (BRBC (const 0 7) (const -64 63))
+  ;; (BREQ (const -64 63))
+  ;; (BRBS (const 0 7) (const -64 63))
+  ;; (BRTC (const -64 63))
+  ;; (BRTS (const -64 63))
+  ;; (BRCC (const -64 63))
+  ;; (IJMP)
+
 
   (define (range->N from to (step 1))
     (+ (quotient (- to from) step) 1))
@@ -97,38 +150,10 @@
     (define name (car instr))
     (concat name (interpret-args (cdr instr))))
 
-
   (define (generate-random-code n)
     (define N-instr (vector-length *instructions-grammar*))
     (for/list ([i n])
       (define instruction-index (random N-instr))
       (make-random-instr (vector-ref *instructions-grammar*
                                      instruction-index))))
-
-  (define (measure-and-save-time proc args output-file-name)
-    (set! output-file-name (expand-user-path output-file-name))
-    (when (not (file-exists? output-file-name))
-      (display-to-file
-       "# year, month, day, hour, minute, second, n, cpu, real, gc\n"
-       output-file-name))
-    (define-values
-      (_ cpu real gc)
-      (time-apply proc args))
-    (define date (seconds->date (current-seconds) #f))
-    (define data
-      (string-join
-       (map number->string
-            (list (date-year date)
-                  (date-month date)
-                  (date-day date)
-                  (date-hour date)
-                  (date-minute date)
-                  (date-second date)
-                  (car args)
-                  cpu real gc))
-       ","))
-    (set! data (string-append data "\n"))
-    (display-to-file data output-file-name
-                     #:exists 'append))
-
   )

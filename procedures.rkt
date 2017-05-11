@@ -1493,4 +1493,4 @@
               name proc cycles 32-bit?
               (map num->hex args)))
     (unless an-opcode-info
-      (printf "~a: #f~n" i))))
+      (printf "~a: #f~n" (num->hex i)))))

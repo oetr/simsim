@@ -183,7 +183,8 @@
    (list
     (list 'SET   "SET" 1))
    (list
-    (list 'SBC   "SBC" 1))
+    (list 'SBC   "SBC" 1)
+    (list 'SBC   "SBC Rd,Rr" 1))
    (list         
     (list 'NOP   "NOP" 1))
    (list
@@ -193,7 +194,8 @@
     (list 'MUL   "MUL" 2)
     (list 'MUL   "MUL Rd,Rr" 2))
    (list
-    (list 'OR   "OR" 1))
+    (list 'OR   "OR" 1)
+    (list 'OR   "OR Rd,Rr" 1))
    (list         
     (list 'ANDI   "ANDI" 1)
     (list 'ANDI   "ANDI Rd,K" 1))
