@@ -1,8 +1,8 @@
 (module test-generator racket/main
   (require racket racket/main rackunit racket/system)
-    (provide (all-defined-out))
-;;  (provide (except-out (all-defined-out)
-;;                       *instructions-grammar*))
+  (provide (all-defined-out))
+  ;;  (provide (except-out (all-defined-out)
+  ;;                       *instructions-grammar*))
 
   ;; instruction arguments and their range
   (define *instructions-grammar*
@@ -28,10 +28,11 @@
        (STS (const 0 127) (reg 16 31)) ;; 16 bit
        (LDS (reg 0 31) (const 0 65535)) ;; 32 bit
        (LDS (reg 16 31) (const 0 127)) ;; 32 bit
-       (JMP (const 0 8388606 2))
-       (RJMP (const -2048 2047 2))
-       
        )))
+  ;; (JMP (const 0 8388606 2))
+  ;; (RJMP (const -2048 2047 2))
+  
+  ;; )))
 
   (define (range->N from to (step 1))
     (+ (quotient (- to from) step) 1))
@@ -104,5 +105,30 @@
       (make-random-instr (vector-ref *instructions-grammar*
                                      instruction-index))))
 
+  (define (measure-and-save-time proc args output-file-name)
+    (set! output-file-name (expand-user-path output-file-name))
+    (when (not (file-exists? output-file-name))
+      (display-to-file
+       "# year, month, day, hour, minute, second, n, cpu, real, gc\n"
+       output-file-name))
+    (define-values
+      (_ cpu real gc)
+      (time-apply proc args))
+    (define date (seconds->date (current-seconds) #f))
+    (define data
+      (string-join
+       (map number->string
+            (list (date-year date)
+                  (date-month date)
+                  (date-day date)
+                  (date-hour date)
+                  (date-minute date)
+                  (date-second date)
+                  (car args)
+                  cpu real gc))
+       ","))
+    (set! data (string-append data "\n"))
+    (display-to-file data output-file-name
+                     #:exists 'append))
 
   )

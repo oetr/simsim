@@ -10,15 +10,6 @@
 
 (define test-dir "001-loading/")
 
-;; generate N random instructions with random arguments
-(define N 30)
-(time 
- (for ([i 1])
-   (define code (generate-random-code 3000))
-   (display-lines-to-file code (~a test-dir "test.S")
-                          #:exists 'truncate/replace)
-   (make test-dir)))
-
 ;; reset the machine, load everything, 
 ;; and let the init code execute
 (define (load-hex test-dir)
@@ -29,17 +20,12 @@
   (hex->flash! hex-file)
   (flash->procedures!))
 
-(time (for ([_ 100])(load-hex test-dir)))
+(define (measure-time n)
+  (for ([i n])
+    (define code (generate-random-code 3000))
+    (display-lines-to-file code (~a test-dir "test.S")
+                           #:exists 'truncate/replace)
+    (make test-dir)
+    (load-hex test-dir)))
 
-
-(* 2 -2047)
-(* 2 2048)
-(* 4194303 2)
-(for ([i (range -2048 -2046 2)])
-  (display-to-file (~a "RJMP " i)
-                   (~a test-dir "test.S")
-                   #:exists 'truncate/replace)
-  (make test-dir)
-  (load-hex test-dir)
-  (print-flash-procedures (vector-take PROCEDURES 1)))
-
+(measure-and-save-time measure-time (list 100) "./runtimes.org")
