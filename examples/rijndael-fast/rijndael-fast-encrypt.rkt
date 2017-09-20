@@ -68,7 +68,7 @@
     ;; TODO: hide more from the user to reduce this 
     ;; flush output buffer if it's a file, so that the whole
     ;; execution trace is saved
-    (close-if-file OUT)
+    (close-if-file)
 
     ;; check whether the simulator computes correct ciphertext
     ;; ciphertext is in the registers r0-r15
@@ -79,8 +79,7 @@
                       "Expected: " (num->hexb correct-ct-byte)
                       ", got: " (num->hexb computed-ct-byte)))
       (check-equal? computed-ct-byte correct-ct-byte msg))
-    ;; save I/O and the number of leakage data points saved in
-    ;; INTERMEDIATE-VALUES-INDEX
+    ;; save I/O and the number of leakage data points
     (when leakage-file
       (write-header leakage-file key pt correct-ct
                     INTERMEDIATE-VALUES-INDEX)

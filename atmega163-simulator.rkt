@@ -572,7 +572,7 @@
           (close-output-port OUT))
         (set! OUT (current-output-port)))))
 
-(define (close-if-file a-port)
+(define (close-if-file!)
   (when (and (port? OUT)
              (not (port-closed? OUT))
              (not (eq? OUT (current-output-port))))

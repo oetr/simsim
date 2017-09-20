@@ -8,7 +8,6 @@
 ** Assume installed objdump, don't require user to provide the symbol table
 ** Generalize individual debugging info: don't use fprintf
 ** Load using "require"
-** TODO Add Hamming distance to the leakage tracker
 ** Only leak individual bits of the status register once
 ** Add tests for each assembly instruction
 :LOGBOOK:
@@ -24,5 +23,6 @@ CLOCK: [2016-02-16 Tue 22:17]--[2016-02-16 Tue 23:57] =>  1:40
 - execute: takes the arguments and executes the instruction
 -> we can look at the code without executing it!
 -> the code might look less messy
+** DONE Add Hamming distance to the leakage tracker
 * DEFERRED
 ** TODO Opcode analysis: what is the Hamming weight of each opcode?
