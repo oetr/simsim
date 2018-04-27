@@ -1,4 +1,12 @@
 * TODO Next steps
+** TODO Hide global variables using message passing
+** TODO Use hdf5 to save all data
+- develop the hdf5 file format
+** TODO Save individual leakage sources
+- The leakage sources are based on the hd/hw model.
+- I want to know which one contributes to the leakage.
+- I want to know which part of the CPU is responsible for the leakage at what time.
+- The mish-mash of all leakage sources erases the most important advantage of using the simulator: insight (speed stays intact).
 ** Put everything in its right place
 - Instructions
 - CPU state manipulation
