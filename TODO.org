@@ -2,6 +2,21 @@
 ** TODO Hide global variables using message passing
 ** TODO Use hdf5 to save all data
 - develop the hdf5 file format
+  - trace/dataset?
+#+begin_src racket
+  (<dataset>
+   #:attributes (list (<time> timestamp)
+                      (<assoc list> 
+                              input data
+                              names of variables
+                              addresses in memory
+                              etc))
+   #:data
+   (<string> leakage source 0)
+   (<array> (<uint32> clock cycle)
+            (<uint64> leakage value)))
+#+end_src
+
 ** TODO Save individual leakage sources
 - The leakage sources are based on the hd/hw model.
 - I want to know which one contributes to the leakage.
